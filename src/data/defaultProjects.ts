@@ -1,4 +1,4 @@
-import { Project, SceneSegment } from '../types/cinegen';
+import { Project } from '../types/cinegen';
 
 export const COFFEE_PROJECT: Project = {
   id: 'proj-coffee-history',

@@ -1,8 +1,8 @@
-import { Project, SceneSegment, CameraTrajectory } from '../types/cinegen';
+import { Project, SceneSegment, CameraTrajectory, VideoVariation, AspectRatio } from '../types/cinegen';
 import { COFFEE_PROJECT } from '../data/defaultProjects';
 
 export interface GenerationProgress {
-  stage: 'script' | 'storyboard' | 'generating' | 'done';
+  stage: 'script' | 'storyboard' | 'generating' | 'variety' | 'done';
   percent: number;
   message: string;
   currentScene?: number;
@@ -10,6 +10,325 @@ export interface GenerationProgress {
 }
 
 export class AiGeneratorService {
+  /**
+   * Intelligently expands and enriches user prompts with cinematic 3D cues
+   */
+  static enhancePrompt(rawPrompt: string): string {
+    const p = rawPrompt.trim();
+    if (!p) return 'Make an epic cinematic 3D documentary with macro PBR textures, atmospheric volumetric lighting, and dramatic camera trajectories.';
+
+    const enhancements = [
+      'shot on 35mm anamorphic prime lenses with cinematic depth of field',
+      'photorealistic PBR materials with dynamic volumetric atmospheric lighting',
+      'sweeping 3D spline camera trajectories from macro close-ups to aerial drone pans',
+      'synchronized broadcast narration, immersive soundscapes, and color-graded broadcast master',
+    ];
+
+    if (p.toLowerCase().includes('3d') || p.toLowerCase().includes('cinematic')) {
+      return `${p}, with photorealistic Three.js PBR shaders, dynamic volumetric lighting, 60 FPS camera motion, and broadcast-grade color LUTs`;
+    }
+
+    return `Produce an epic realistic 3D cinematic video about ${p}, ${enhancements.join(', ')}`;
+  }
+
+  /**
+   * Generates a variety of 4 distinct candidate video directions from a single prompt
+   */
+  static async generateVideoVariations(
+    prompt: string,
+    options: { duration: number; aspectRatio: AspectRatio; is3D?: boolean },
+    onProgress?: (progress: GenerationProgress) => void
+  ): Promise<{ variations: VideoVariation[]; selectedProject: Project }> {
+    // Progress notification
+    onProgress?.({
+      stage: 'variety',
+      percent: 20,
+      message: 'Deconstructing prompt into 4 distinct directorial aesthetic treatments...',
+    });
+    await new Promise((r) => setTimeout(r, 450));
+
+    onProgress?.({
+      stage: 'variety',
+      percent: 50,
+      message: 'Synthesizing candidate 3D camera trajectories, lighting shaders, and color palettes...',
+    });
+    await new Promise((r) => setTimeout(r, 550));
+
+    onProgress?.({
+      stage: 'variety',
+      percent: 85,
+      message: 'Compiling real-time WebGL 3D candidate previews & voice sync tracks...',
+    });
+    await new Promise((r) => setTimeout(r, 450));
+
+    // Base project derived from prompt
+    const baseProject = await this.generateProjectFromPrompt(prompt, () => {});
+    baseProject.targetDurationSec = options.duration;
+    baseProject.aspectRatio = options.aspectRatio;
+    baseProject.is3D = options.is3D !== false;
+
+    // Variation 1: Director's Cinematic Masterpiece (Epic / Anamorphic / Golden Hour)
+    const var1Project: Project = {
+      ...baseProject,
+      id: `var-cinematic-${Date.now()}`,
+      title: `${baseProject.title} [Director's Cut]`,
+      tone: 'Cinematic 3D Blockbuster • Majestic, Epic, Anamorphic Primes',
+      colorGrade: 'Kodak 2383 Golden Amber & Deep Contrast LUT',
+      musicStyle: 'Hans Zimmer Style Hybrid Orchestral & Deep Brass',
+      captionStyle: 'documentary',
+      selectedVoiceId: 'voice-attenborough',
+      render3DMode: 'cinematic_pbr',
+      segments: baseProject.segments.map((s, i) => ({
+        ...s,
+        camera3D: {
+          trajectory: (i % 2 === 0 ? 'orbit_360' : 'crane_rise') as CameraTrajectory,
+          fov: 42,
+          startPos: [8, 4, 8],
+          endPos: [-8, 4, 8],
+          lookAt: [0, 0, 0],
+          lensPreset: '50mm Anamorphic Prime f/1.2',
+        },
+        lighting3D: {
+          environment: 'golden_hour',
+          keyLightColor: '#fde047',
+          fillLightColor: '#78350f',
+          rimLightColor: '#38bdf8',
+          ambientIntensity: 0.75,
+          directionalIntensity: 2.5,
+          volumetricFog: true,
+          fogColor: '#1a0d05',
+          fogDensity: 0.015,
+        },
+        particles3D: {
+          type: 'dust',
+          count: 500,
+          color: '#fef08a',
+          speed: 0.7,
+          size: 0.1,
+        },
+      })),
+    };
+
+    // Variation 2: Dynamic Cyberpunk Velocity (High-Speed / Neon / Synth)
+    const var2Project: Project = {
+      ...baseProject,
+      id: `var-cyberpunk-${Date.now()}`,
+      title: `${baseProject.title} [Cyberpunk Velocity Cut]`,
+      tone: 'High-Energy Futuristic • Dynamic Drone Sweep, Neon Glow',
+      colorGrade: 'Blade Runner Neon Cyan & Hot Magenta LUT',
+      musicStyle: 'Synthwave Electronic Pulse with Heavy Bass Drops',
+      captionStyle: 'neon',
+      selectedVoiceId: 'voice-kenji',
+      render3DMode: 'cinematic_pbr',
+      segments: baseProject.segments.map((s, i) => ({
+        ...s,
+        camera3D: {
+          trajectory: (i % 2 === 0 ? 'drone_flyover' : 'fpv_flythrough') as CameraTrajectory,
+          fov: 58,
+          startPos: [0, 6, 14],
+          endPos: [0, 2, -12],
+          lookAt: [0, 0, -20],
+          lensPreset: '24mm Ultra-Wide Cine f/1.8',
+        },
+        lighting3D: {
+          environment: 'cyberpunk_neon',
+          keyLightColor: '#06b6d4',
+          fillLightColor: '#f43f5e',
+          rimLightColor: '#a855f7',
+          ambientIntensity: 0.8,
+          directionalIntensity: 2.4,
+          volumetricFog: true,
+          fogColor: '#0a0518',
+          fogDensity: 0.022,
+        },
+        particles3D: {
+          type: 'stardust',
+          count: 600,
+          color: '#38bdf8',
+          speed: 1.6,
+          size: 0.12,
+        },
+      })),
+    };
+
+    // Variation 3: Atmospheric NatGeo Poetic (Naturalistic / Macro / Contemplative)
+    const var3Project: Project = {
+      ...baseProject,
+      id: `var-natgeo-${Date.now()}`,
+      title: `${baseProject.title} [Atmospheric NatGeo Cut]`,
+      tone: 'Poetic Documentary • Organic Lighting, Intimate Macro Detail',
+      colorGrade: 'Naturalistic 35mm Film Stock & Soft Organic Shadows',
+      musicStyle: 'Acoustic Guitar & Warm Ambient Strings',
+      captionStyle: 'documentary',
+      selectedVoiceId: 'voice-elena',
+      render3DMode: 'cinematic_pbr',
+      segments: baseProject.segments.map((s, i) => ({
+        ...s,
+        camera3D: {
+          trajectory: (i % 2 === 0 ? 'macro_push' : 'dutch_pan') as CameraTrajectory,
+          fov: 38,
+          startPos: [0, 3, 9],
+          endPos: [0, 0.8, 3.8],
+          lookAt: [0, 0, 0],
+          lensPreset: '85mm Macro Portrait f/1.4',
+        },
+        lighting3D: {
+          environment: 'highland_mist',
+          keyLightColor: '#ffffff',
+          fillLightColor: '#334155',
+          rimLightColor: '#fde047',
+          ambientIntensity: 0.65,
+          directionalIntensity: 1.9,
+          volumetricFog: true,
+          fogColor: '#0f172a',
+          fogDensity: 0.025,
+        },
+        particles3D: {
+          type: 'steam',
+          count: 450,
+          color: '#e2e8f0',
+          speed: 0.5,
+          size: 0.14,
+        },
+      })),
+    };
+
+    // Variation 4: Modern Minimalist Tech Explainer (Kinetic / Bold / Wireframe-Hybrid)
+    const var4Project: Project = {
+      ...baseProject,
+      id: `var-tech-${Date.now()}`,
+      title: `${baseProject.title} [Modern Tech Explainer]`,
+      tone: 'Clean Modern Explainer • Crisp Geometry, Bold Kinetic Pacing',
+      colorGrade: 'Cobalt Studio Cleanroom & Radiant Hologram Accents',
+      musicStyle: 'Minimalist Upbeat Lo-Fi Tech Groove',
+      captionStyle: 'mrbeast',
+      selectedVoiceId: 'voice-maya',
+      render3DMode: 'cinematic_pbr',
+      segments: baseProject.segments.map((s, i) => ({
+        ...s,
+        camera3D: {
+          trajectory: (i % 2 === 0 ? 'spiral_reveal' : 'cinematic_dolly') as CameraTrajectory,
+          fov: 46,
+          startPos: [5, 4, 7],
+          endPos: [-5, 2, 7],
+          lookAt: [0, 0, 0],
+          lensPreset: '35mm Studio Prime f/2.0',
+        },
+        lighting3D: {
+          environment: 'studio_softbox',
+          keyLightColor: '#38bdf8',
+          fillLightColor: '#1e293b',
+          rimLightColor: '#fbbf24',
+          ambientIntensity: 0.9,
+          directionalIntensity: 2.0,
+          volumetricFog: true,
+          fogColor: '#040814',
+          fogDensity: 0.012,
+        },
+        particles3D: {
+          type: 'sparks',
+          count: 400,
+          color: '#38bdf8',
+          speed: 1.1,
+          size: 0.09,
+        },
+      })),
+    };
+
+    const variations: VideoVariation[] = [
+      {
+        id: 'var-1',
+        title: "Director's Cinematic 3D Cut",
+        styleName: 'Cinematic 3D Blockbuster',
+        tagline: 'Sweeping 3D Anamorphic Cameras & Warm Golden Hour PBR',
+        description: 'Immersive cinematic pacing with grand crane trajectories, rich atmospheric lighting, and orchestral score depth.',
+        visualTheme: baseProject.segments[0]?.visualTheme || 'coffee',
+        tone: 'Epic Cinema Documentary',
+        colorGrade: 'Kodak 2383 Golden Amber LUT',
+        musicStyle: 'Hans Zimmer Hybrid Orchestral',
+        captionStyle: 'documentary',
+        cameraStyle: '50mm Anamorphic Primes • 360° Orbit & Crane Rise',
+        lightingEnvironment: 'Golden Hour Sunset & Volumetric Haze',
+        badge: "DIRECTOR'S CHOICE",
+        accentColor: '#f59e0b',
+        recommendedVoiceId: 'voice-attenborough',
+        render3DMode: 'cinematic_pbr',
+        project: var1Project,
+      },
+      {
+        id: 'var-2',
+        title: 'Cyberpunk Velocity Cut',
+        styleName: 'High-Energy Sci-Fi / Action',
+        tagline: 'Kinetic 60 FPS Drone Flights & Neon Chromatic Glow',
+        description: 'Ultra-dynamic pacing with fast camera flythroughs, glowing neon volumetric fog, and synthwave electronic beats.',
+        visualTheme: 'scifi_cyberpunk',
+        tone: 'High-Energy Modern / Futuristic',
+        colorGrade: 'Blade Runner Cyan & Magenta LUT',
+        musicStyle: 'Synthwave Heavy Electronic Pulse',
+        captionStyle: 'neon',
+        cameraStyle: '24mm Ultra-Wide • FPV Drone Flythroughs',
+        lightingEnvironment: 'Cyberpunk Neon & Chromatic Fog',
+        badge: 'TRENDING ON TIKTOK',
+        accentColor: '#ec4899',
+        recommendedVoiceId: 'voice-kenji',
+        render3DMode: 'cinematic_pbr',
+        project: var2Project,
+      },
+      {
+        id: 'var-3',
+        title: 'Atmospheric NatGeo Poetic',
+        styleName: 'Poetic Nature & Macro Documentary',
+        tagline: 'Intimate Macro Depth-of-Field & Highland Mist Atmosphere',
+        description: 'Quiet, contemplative pacing highlighting intricate textures, soft natural lighting, and warm organic narration.',
+        visualTheme: 'nature',
+        tone: 'Intimate, Lyrical, Contemplative',
+        colorGrade: 'Naturalistic 35mm Film Stock',
+        musicStyle: 'Acoustic Guitar & Warm Strings',
+        captionStyle: 'documentary',
+        cameraStyle: '85mm Macro Portrait • Gentle Dutch Pans',
+        lightingEnvironment: 'Highland Mist & Soft Diffused Light',
+        badge: 'BBC / NATGEO STYLE',
+        accentColor: '#10b981',
+        recommendedVoiceId: 'voice-elena',
+        render3DMode: 'cinematic_pbr',
+        project: var3Project,
+      },
+      {
+        id: 'var-4',
+        title: 'Modern Minimalist Tech Explainer',
+        styleName: 'Clean Tech & Kinetic Motion',
+        tagline: 'Crisp Cleanroom Shaders, Kinetic Titles & Upbeat Lo-Fi',
+        description: 'Punchy, informative style featuring sharp 3D geometric framing, vibrant subtitle animations, and modern creator energy.',
+        visualTheme: 'quantum',
+        tone: 'Crisp, Engaging, Creator-First',
+        colorGrade: 'Cobalt Studio & Hologram Accents',
+        musicStyle: 'Minimalist Upbeat Lo-Fi Tech',
+        captionStyle: 'mrbeast',
+        cameraStyle: '35mm Studio Prime • Spiral Dolly Reveals',
+        lightingEnvironment: 'Studio Softbox & Particle Sparkles',
+        badge: 'YOUTUBE EXPLAINER',
+        accentColor: '#38bdf8',
+        recommendedVoiceId: 'voice-maya',
+        render3DMode: 'cinematic_pbr',
+        project: var4Project,
+      },
+    ];
+
+    var1Project.variations = variations;
+    var1Project.selectedVariationId = 'var-1';
+
+    onProgress?.({
+      stage: 'done',
+      percent: 100,
+      message: 'Generated 4 candidate video variations! Choose the best one below.',
+    });
+
+    return {
+      variations,
+      selectedProject: var1Project,
+    };
+  }
+
   /**
    * Generates a complete 6-minute realistic 3D video project pipeline from a single prompt
    */

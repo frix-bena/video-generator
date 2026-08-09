@@ -142,8 +142,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       ctx.save();
       ctx.globalAlpha = alpha;
 
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-      ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
+      ctx.fillStyle = 'rgba(26, 10, 20, 0.9)';
+      ctx.strokeStyle = 'rgba(236, 72, 153, 0.6)';
       ctx.lineWidth = 1.5;
 
       ctx.beginPath();
@@ -151,16 +151,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#6366f1';
+      ctx.fillStyle = '#ec4899';
       ctx.beginPath();
       ctx.roundRect(xPos, yPos, 6, 68, [12, 0, 0, 12]);
       ctx.fill();
 
-      ctx.fillStyle = '#f8fafc';
+      ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 15px "Outfit", sans-serif';
       ctx.fillText(seg.title.toUpperCase(), xPos + 22, yPos + 26);
 
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = '#fce7f3';
       ctx.font = '12px "JetBrains Mono", monospace';
       ctx.fillText(seg.lowerThirdText, xPos + 22, yPos + 48);
 
@@ -190,7 +190,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             const isActive = globalWordIdx === activeIndex;
             const wWidth = ctx.measureText(w + ' ').width;
 
-            ctx.fillStyle = isActive ? '#fbbf24' : '#ffffff';
+            ctx.fillStyle = isActive ? '#ec4899' : '#ffffff';
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 5;
             ctx.strokeText(w, startX + wWidth / 2, captionY);
@@ -204,20 +204,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const phrase = visibleWords.join(' ');
           const textWidth = ctx.measureText(phrase).width;
 
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillStyle = 'rgba(20, 7, 16, 0.85)';
           ctx.beginPath();
           ctx.roundRect((width - textWidth - 36) / 2, captionY - 26, textWidth + 36, 38, 8);
           ctx.fill();
 
-          ctx.fillStyle = '#f8fafc';
+          ctx.fillStyle = '#ffffff';
           ctx.fillText(phrase, width / 2, captionY);
         } else if (captionStyle === 'neon') {
           ctx.font = '700 22px "JetBrains Mono", monospace';
           ctx.textAlign = 'center';
           const phrase = visibleWords.join(' ');
-          ctx.shadowColor = '#06b6d4';
+          ctx.shadowColor = '#ec4899';
           ctx.shadowBlur = 15;
-          ctx.fillStyle = '#22d3ee';
+          ctx.fillStyle = '#f472b6';
           ctx.fillText(phrase, width / 2, captionY);
         } else if (captionStyle === 'netflix') {
           ctx.font = '600 21px "Inter", sans-serif';
@@ -225,7 +225,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const phrase = visibleWords.join(' ');
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 4;
-          ctx.fillStyle = '#fbbf24';
+          ctx.fillStyle = '#fce7f3';
           ctx.strokeText(phrase, width / 2, captionY);
           ctx.fillText(phrase, width / 2, captionY);
         }
@@ -236,7 +236,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     // 4. Aspect ratio pillarboxes
     if (aspectRatio !== '16:9') {
       ctx.save();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+      ctx.fillStyle = 'rgba(14, 4, 10, 0.95)';
       if (aspectRatio === '9:16') {
         const targetWidth = height * (9 / 16);
         const sideMargin = (width - targetWidth) / 2;
@@ -403,7 +403,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div 
       ref={containerRef}
-      className="relative flex flex-col rounded-2xl overflow-hidden border border-indigo-500/30 bg-slate-950 shadow-2xl shadow-black/90 group/player"
+      className="relative flex flex-col rounded-2xl overflow-hidden border border-pink-500/30 bg-slate-950 shadow-2xl shadow-black/90 group/player"
     >
       {/* 3D Realistic Video Canvas Container */}
       <div className="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
@@ -426,11 +426,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         {/* Top-Left: Realistic 3D Cinema Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-2 pointer-events-none z-20">
-          <div className="flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-amber-400 border border-amber-500/30 shadow-lg">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+          <div className="flex items-center gap-1.5 rounded-lg bg-black/80 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-pink-300 border border-pink-500/30 shadow-lg">
+            <span className="h-2 w-2 rounded-full bg-pink-400 animate-ping" />
             <span>REALISTIC 3D MASTER • 60 FPS</span>
           </div>
-          <div className="rounded-md bg-black/75 backdrop-blur-md px-2 py-1 text-[11px] font-mono text-indigo-300 border border-indigo-500/30 shadow-lg hidden sm:block">
+          <div className="rounded-lg bg-black/80 backdrop-blur-md px-2 py-1 text-[11px] font-mono text-pink-200 border border-pink-500/30 shadow-lg hidden sm:block">
             {currentSegment?.camera3D?.lensPreset || currentSegment?.shotType.split('•')[1] || '50mm Cinema Prime'}
           </div>
         </div>
@@ -440,26 +440,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {/* Interactive 3D Camera Toggle Button */}
           <button
             onClick={() => setIsInteractive3D(!isInteractive3D)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold backdrop-blur-md border transition-all ${
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold backdrop-blur-md border transition-all duration-200 ${
               isInteractive3D
-                ? 'bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/30 font-bold'
-                : 'bg-black/75 hover:bg-slate-900 text-slate-300 border-white/20'
+                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-400 shadow-lg shadow-pink-500/30 font-bold'
+                : 'bg-black/80 hover:bg-slate-900 text-slate-200 border-pink-500/20'
             }`}
             title="Toggle between Directed Camera and Interactive 3D Free-Orbit Inspection"
           >
-            <Compass className={`h-3.5 w-3.5 ${isInteractive3D ? 'animate-spin' : ''}`} />
+            <Compass className={`h-3.5 w-3.5 ${isInteractive3D ? 'animate-spin text-white' : 'text-pink-400'}`} />
             <span>{isInteractive3D ? '🕹️ 3D Orbit Active' : '🎬 Directed 3D Camera'}</span>
           </button>
 
-          <div className="rounded-md bg-indigo-950/90 backdrop-blur-md px-3 py-1 text-xs font-semibold text-indigo-200 border border-indigo-500/40 shadow-lg hidden md:block">
+          <div className="rounded-xl bg-pink-950/90 backdrop-blur-md px-3 py-1 text-xs font-semibold text-pink-200 border border-pink-500/40 shadow-lg hidden md:block">
             Scene {currentSegmentIdx + 1} / {segments.length}: {currentSegment?.title.split(':')[1] || currentSegment?.title}
           </div>
         </div>
 
         {/* Interactive 3D Orbit Tip Toast (Shown when interactive 3D enabled) */}
         {isInteractive3D && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-amber-500/40 rounded-full px-4 py-1 text-xs text-amber-300 shadow-xl flex items-center gap-2 pointer-events-none animate-pulse z-20">
-            <Compass className="h-3.5 w-3.5 text-amber-400" />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-md border border-pink-500/40 rounded-full px-4 py-1 text-xs text-pink-200 shadow-xl flex items-center gap-2 pointer-events-none animate-pulse z-20">
+            <Compass className="h-3.5 w-3.5 text-pink-400" />
             <span>Click & drag to rotate 3D angle • Scroll to zoom</span>
           </div>
         )}
@@ -468,9 +468,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {!isPlaying && !isInteractive3D && (
           <div 
             onClick={handleTogglePlay}
-            className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] cursor-pointer transition-opacity z-10"
+            className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[2px] cursor-pointer transition-opacity z-10"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-600/90 text-white shadow-2xl shadow-indigo-500/50 hover:scale-110 transition-transform">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-2xl shadow-pink-500/50 hover:scale-110 transition-transform duration-200">
               <Play className="h-9 w-9 translate-x-0.5 fill-white" />
             </div>
           </div>
@@ -478,14 +478,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         {/* Recording Overlay Indicator */}
         {isRecording && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md z-30">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md z-30">
             <div className="flex items-center gap-3 mb-3">
-              <span className="h-4 w-4 rounded-full bg-red-500 animate-ping" />
+              <span className="h-4 w-4 rounded-full bg-rose-500 animate-ping" />
               <span className="text-lg font-bold text-white font-display">Rendering Realistic 3D Master Video...</span>
             </div>
-            <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+            <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden border border-pink-500/20">
               <div 
-                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-400 transition-all duration-300"
+                className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-amber-400 transition-all duration-300"
                 style={{ width: `${recordProgress}%` }}
               />
             </div>
@@ -495,10 +495,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       </div>
 
       {/* 3D Scene Directing & Timeline Bar */}
-      <div className="bg-slate-900/95 px-4 pt-3 pb-2 border-t border-white/10">
+      <div className="bg-slate-900/95 px-4 pt-3 pb-2 border-t border-pink-500/20">
         {/* Visual Segment Slices */}
         <div className="relative mb-2">
-          <div className="flex h-3 w-full gap-1 rounded-full overflow-hidden bg-slate-950 p-0.5 border border-white/10">
+          <div className="flex h-3 w-full gap-1 rounded-full overflow-hidden bg-slate-950 p-0.5 border border-pink-500/20">
             {segments.map((seg, i) => {
               const segPct = (seg.duration / totalDuration) * 100;
               const isCurrent = currentSegmentIdx === i;
@@ -513,16 +513,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   style={{ width: `${segPct}%` }}
                   title={`${seg.title} (${formatTime(seg.startTime)} - ${formatTime(seg.endTime)}) • 3D: ${seg.camera3D?.trajectory || 'Directed'}`}
                   className={`relative h-full cursor-pointer transition-all hover:brightness-125 ${
-                    isCurrent ? 'ring-1 ring-indigo-400' : ''
+                    isCurrent ? 'ring-1 ring-pink-400' : ''
                   }`}
                 >
                   <div className="h-full w-full bg-slate-800/80 rounded-sm overflow-hidden">
                     <div 
                       className={`h-full transition-all ${
                         isCurrent 
-                          ? 'bg-gradient-to-r from-indigo-500 to-purple-500' 
+                          ? 'bg-gradient-to-r from-pink-500 to-rose-500' 
                           : isPast 
-                          ? 'bg-indigo-700/60' 
+                          ? 'bg-pink-700/60' 
                           : 'bg-transparent'
                       }`}
                       style={{ width: `${segProgress * 100}%` }}
@@ -551,7 +551,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleJumpScene('prev')}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Previous Scene"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -559,7 +559,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               onClick={() => handleSeek(globalTime - 10)}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Rewind 10s"
             >
               <Rewind className="h-4 w-4" />
@@ -567,7 +567,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               onClick={handleTogglePlay}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-transform active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 hover:from-rose-500 hover:to-pink-600 text-white shadow-md shadow-pink-500/30 transition-transform active:scale-95"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause className="h-4 w-4 fill-white" /> : <Play className="h-4 w-4 translate-x-0.5 fill-white" />}
@@ -575,7 +575,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               onClick={() => handleSeek(globalTime + 10)}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Fast Forward 10s"
             >
               <FastForward className="h-4 w-4" />
@@ -583,7 +583,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               onClick={() => handleJumpScene('next')}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Next Scene"
             >
               <ChevronRight className="h-4 w-4" />
@@ -599,7 +599,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {/* Right Controls (3D Shaders, Speed, Aspect, Captions, Volume, Fullscreen) */}
           <div className="flex items-center gap-2">
             {/* 3D Render Shading Mode Selector */}
-            <div className="flex items-center rounded-lg bg-slate-800 border border-white/10 p-0.5">
+            <div className="flex items-center rounded-xl bg-slate-800 border border-pink-500/20 p-0.5">
               {(['cinematic_pbr', 'wireframe', 'clay_model'] as Render3DMode[]).map((mode) => (
                 <button
                   key={mode}
@@ -607,8 +607,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     setRender3DMode(mode);
                     onUpdateProject?.({ render3DMode: mode });
                   }}
-                  className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
-                    render3DMode === mode ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-all duration-200 ${
+                    render3DMode === mode ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30' : 'text-slate-400 hover:text-slate-200'
                   }`}
                   title={`3D Shading Mode: ${mode}`}
                 >
@@ -621,7 +621,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <select
               value={playbackSpeed}
               onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-              className="rounded-lg bg-slate-800 border border-white/10 px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="rounded-xl bg-slate-800 border border-pink-500/20 px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-pink-500 cursor-pointer"
             >
               <option value={0.75}>0.75x</option>
               <option value={1}>1.0x</option>
@@ -631,7 +631,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </select>
 
             {/* Aspect Ratio Switcher */}
-            <div className="flex items-center rounded-lg bg-slate-800 border border-white/10 p-0.5 hidden sm:flex">
+            <div className="flex items-center rounded-xl bg-slate-800 border border-pink-500/20 p-0.5 hidden sm:flex">
               {(['16:9', '9:16', '1:1'] as AspectRatio[]).map((ar) => (
                 <button
                   key={ar}
@@ -639,8 +639,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     setAspectRatio(ar);
                     onUpdateProject?.({ aspectRatio: ar });
                   }}
-                  className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
-                    aspectRatio === ar ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-all duration-200 ${
+                    aspectRatio === ar ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   {ar}
@@ -651,13 +651,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Captions Style Switcher */}
             <div className="relative group">
               <button
-                className="flex items-center gap-1 rounded-lg bg-slate-800 border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700 transition-colors"
+                className="flex items-center gap-1 rounded-xl bg-slate-800 border border-pink-500/20 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
                 title="Captions Style"
               >
-                <Subtitles className="h-3.5 w-3.5 text-indigo-400" />
-                <span className="capitalize text-[11px]">{captionStyle}</span>
+                <Subtitles className="h-3.5 w-3.5 text-pink-400" />
+                <span className="capitalize text-[11px] font-semibold">{captionStyle}</span>
               </button>
-              <div className="absolute right-0 bottom-full mb-1 hidden group-hover:flex flex-col rounded-lg bg-slate-900 border border-white/10 p-1 shadow-xl z-30 min-w-[120px]">
+              <div className="absolute right-0 bottom-full mb-1 hidden group-hover:flex flex-col rounded-xl bg-slate-900 border border-pink-500/25 p-1 shadow-2xl z-30 min-w-[130px]">
                 {(['documentary', 'mrbeast', 'netflix', 'neon', 'off'] as CaptionStyle[]).map((style) => (
                   <button
                     key={style}
@@ -665,8 +665,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       setCaptionStyle(style);
                       onUpdateProject?.({ captionStyle: style });
                     }}
-                    className={`rounded px-2 py-1 text-left text-xs capitalize hover:bg-indigo-600 hover:text-white ${
-                      captionStyle === style ? 'bg-indigo-600/30 text-indigo-300 font-semibold' : 'text-slate-300'
+                    className={`rounded-lg px-2.5 py-1.5 text-left text-xs capitalize transition-colors ${
+                      captionStyle === style ? 'bg-pink-600 text-white font-bold' : 'text-slate-300 hover:bg-pink-950/60 hover:text-white'
                     }`}
                   >
                     {style}
@@ -682,16 +682,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 setIsMuted(nextMuted);
                 audioEngine.setMute(nextMuted);
               }}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title={isMuted ? 'Unmute' : 'Mute'}
             >
-              {isMuted ? <VolumeX className="h-4 w-4 text-rose-400" /> : <Volume2 className="h-4 w-4" />}
+              {isMuted ? <VolumeX className="h-4 w-4 text-rose-400" /> : <Volume2 className="h-4 w-4 text-pink-400" />}
             </button>
 
             {/* Fullscreen */}
             <button
               onClick={handleToggleFullscreen}
-              className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Toggle Fullscreen"
             >
               {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
@@ -701,11 +701,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button
               onClick={handleExportRecording}
               disabled={isRecording}
-              className="flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/30 px-2.5 py-1 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/30"
+              className="btn-cine-primary flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold shadow-md shadow-pink-500/30"
               title="Export 3D Master Video (.WebM / .MP4)"
             >
-              <Download className="h-3.5 w-3.5 text-amber-300" />
-              <span className="hidden sm:inline">Export 3D Video</span>
+              <Download className="h-3.5 w-3.5 text-white" />
+              <span className="hidden sm:inline">Export 3D</span>
             </button>
           </div>
         </div>

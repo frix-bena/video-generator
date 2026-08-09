@@ -3,11 +3,7 @@ import {
   Layers, 
   X, 
   RotateCcw, 
-  Clock, 
-  Check, 
-  User, 
-  FileText,
-  Sparkles
+  Clock
 } from 'lucide-react';
 import { Project, ProjectVersion } from '../types/cinegen';
 import { audioEngine } from '../services/audioEngine';
@@ -31,18 +27,18 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="glass-panel w-full max-w-xl rounded-2xl border border-white/10 p-6 space-y-5 bg-slate-950/95 shadow-2xl relative">
+      <div className="glass-panel w-full max-w-xl rounded-2xl border border-pink-500/30 p-6 space-y-5 bg-slate-950/95 shadow-2xl relative">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600/30 text-indigo-400">
+        <div className="flex items-center justify-between pb-3 border-b border-pink-500/20">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30 shadow-md">
               <Layers className="h-4 w-4" />
             </div>
             <div>
               <h3 className="font-display text-base font-bold text-white">
                 Project Cut & Version History
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 Revert to any previous draft or snapshot instantly without data loss.
               </p>
             </div>
@@ -50,7 +46,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
 
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -59,7 +55,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
         {/* Version List */}
         <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
           {/* Current Master */}
-          <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/20 space-y-2">
+          <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/20 space-y-2 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -67,7 +63,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                   Current Master Cut (v{project.currentVersion}.0)
                 </span>
               </div>
-              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-300">
+              <span className="rounded-md bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-emerald-300 border border-emerald-500/30">
                 ACTIVE
               </span>
             </div>
@@ -77,14 +73,14 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
           </div>
 
           {/* Historical Versions */}
-          {versions.map((ver, idx) => (
+          {versions.map((ver) => (
             <div
               key={ver.versionId}
-              className="glass-card p-4 rounded-xl border border-white/5 hover:border-white/20 space-y-2"
+              className="glass-card p-4 rounded-xl border border-pink-500/15 hover:border-pink-500/35 space-y-2"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-slate-400" />
+                  <Clock className="h-3.5 w-3.5 text-pink-400" />
                   <span className="font-display text-xs font-bold text-white">
                     {ver.label}
                   </span>
@@ -94,11 +90,11 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                 </span>
               </div>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 {ver.summary}
               </p>
 
-              <div className="pt-2 flex items-center justify-between border-t border-white/5">
+              <div className="pt-2 flex items-center justify-between border-t border-pink-500/10">
                 <span className="text-[10px] text-slate-500">
                   By {ver.author}
                 </span>
@@ -109,7 +105,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                     audioEngine.playSFX('chime');
                     onClose();
                   }}
-                  className="flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="flex items-center gap-1 text-xs font-bold text-pink-400 hover:text-pink-300 transition-colors"
                 >
                   <RotateCcw className="h-3 w-3" />
                   <span>Restore This Cut</span>
@@ -119,17 +115,17 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
           ))}
 
           {versions.length === 0 && (
-            <div className="text-center py-6 text-xs text-slate-500">
+            <div className="text-center py-6 text-xs text-slate-400">
               No previous saved snapshots yet. Click "Save Cut Snapshot" in Stage 5 to create rollback points.
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-2 border-t border-white/10 flex justify-end">
+        <div className="pt-2 border-t border-pink-500/20 flex justify-end">
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 px-4 py-2 text-xs font-medium text-slate-300"
+            className="btn-cine-secondary rounded-xl px-4 py-2 text-xs font-semibold"
           >
             Close
           </button>

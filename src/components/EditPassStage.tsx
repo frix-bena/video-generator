@@ -1,29 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  Sliders, 
   Sun, 
   Moon, 
   Scissors, 
   Music, 
-  Subtitles, 
-  RefreshCw, 
   ArrowRight, 
-  Sparkles, 
   Plus, 
   Minus, 
   Check, 
-  Layers, 
-  RotateCcw, 
   Save, 
-  Volume2, 
   FileText,
-  Palette,
   Box,
-  Compass,
   Camera,
-  Sparkle
+  Sparkles
 } from 'lucide-react';
-import { Project, SceneSegment, CaptionStyle, ProjectVersion, CameraTrajectory } from '../types/cinegen';
+import { Project, CaptionStyle, ProjectVersion, CameraTrajectory } from '../types/cinegen';
 import { VideoPlayer } from './VideoPlayer';
 import { audioEngine } from '../services/audioEngine';
 
@@ -38,7 +29,6 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
   project,
   onUpdateProject,
   onProceed,
-  onOpenVersionHistory,
 }) => {
   const [selectedSceneIndex, setSelectedSceneIndex] = useState<number>(0);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState<boolean>(false);
@@ -121,7 +111,7 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
           particles3D: {
             type,
             count: 400,
-            color: type === 'embers' ? '#f59e0b' : type === 'steam' ? '#ffffff' : '#06b6d4',
+            color: type === 'embers' ? '#f43f5e' : type === 'steam' ? '#ffffff' : '#ec4899',
             speed: 1,
             size: 0.1,
           },
@@ -187,30 +177,30 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
   };
 
   return (
-    <div className="mx-auto max-w-6xl py-6 px-4 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-6xl py-4 sm:py-6 space-y-6">
       {/* Top Banner */}
-      <div className="glass-panel p-5 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-4">
+      <div className="glass-panel p-5 rounded-2xl border border-pink-500/25 flex flex-wrap items-center justify-between gap-4 shadow-xl">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-indigo-300 border border-indigo-500/30">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="rounded-md bg-pink-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-pink-300 border border-pink-500/30">
               STAGE 5 • 3D DIRECTOR & EDIT PASS
             </span>
-            <span className="text-xs text-slate-400">• Realtime 3D Scene Controls</span>
+            <span className="text-xs text-pink-300/80">• Realtime 3D Scene Controls</span>
           </div>
-          <h2 className="font-display text-2xl font-bold text-white">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white">
             Fine-Tune Your 3D Video
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-300 mt-0.5">
             Direct 3D camera paths, adjust volumetric lighting, swap soundtrack beds, or edit dialogue lines in real-time.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {/* Save Snapshot Button */}
           <button
             onClick={handleSaveVersionSnapshot}
             disabled={isSavingSnapshot}
-            className="flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 px-3.5 py-2 text-xs font-medium text-slate-200"
+            className="btn-cine-secondary flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold"
           >
             {snapshotSuccess ? (
               <>
@@ -219,7 +209,7 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
               </>
             ) : (
               <>
-                <Save className="h-3.5 w-3.5 text-indigo-400" />
+                <Save className="h-3.5 w-3.5 text-pink-400" />
                 <span>Save Cut Snapshot</span>
               </>
             )}
@@ -227,7 +217,7 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
 
           <button
             onClick={onProceed}
-            className="btn-cine-primary flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-bold shadow-lg shadow-indigo-600/30"
+            className="btn-cine-primary flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-lg shadow-pink-500/30"
           >
             <span>Proceed to Publish</span>
             <ArrowRight className="h-4 w-4" />
@@ -247,8 +237,8 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
           />
 
           {/* Quick Scene Selector Pills */}
-          <div className="glass-panel p-3 rounded-xl border border-white/10 space-y-2">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="glass-panel p-3.5 rounded-2xl border border-pink-500/20 space-y-2.5 shadow-md">
+            <span className="text-[11px] font-bold text-pink-300 uppercase tracking-wider">
               Select 3D Scene to Direct
             </span>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -256,10 +246,10 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
                 <button
                   key={seg.id}
                   onClick={() => handleSelectScene(i)}
-                  className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`flex-shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
                     selectedSceneIndex === i
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                      : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-white/5'
+                      ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-500/30'
+                      : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 border border-pink-500/15'
                   }`}
                 >
                   Shot {i + 1}
@@ -272,21 +262,21 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
         {/* Right: 3D Directing & Plain-Language Editing Panels */}
         <div className="lg:col-span-5 space-y-4">
           {/* 3D Camera & Scene Panel */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/20 space-y-4 shadow-md">
+            <div className="flex items-center justify-between pb-3 border-b border-pink-500/15">
               <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
-                <Box className="h-4 w-4 text-amber-400" />
+                <Box className="h-4 w-4 text-pink-400" />
                 <span>Directing Shot {selectedSceneIndex + 1}: {currentSegment?.title.split(':')[1] || currentSegment?.title}</span>
               </h3>
-              <span className="font-mono text-xs text-amber-400">
+              <span className="font-mono text-xs text-pink-300 font-bold">
                 {currentSegment?.duration}s
               </span>
             </div>
 
             {/* 1. 3D Camera Trajectory Path */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Camera className="h-3.5 w-3.5 text-indigo-400" />
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Camera className="h-3.5 w-3.5 text-pink-400" />
                 3D Camera Trajectory Path
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -299,10 +289,10 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
                   <button
                     key={traj.id}
                     onClick={() => handleSelect3DCameraTrajectory(traj.id as CameraTrajectory)}
-                    className={`rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-all ${
+                    className={`rounded-xl px-3 py-2 text-left text-xs font-semibold transition-all duration-200 ${
                       currentSegment.camera3D?.trajectory === traj.id
-                        ? 'bg-indigo-600 text-white font-bold'
-                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-white/5'
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30'
+                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-pink-500/15'
                     }`}
                   >
                     {traj.label}
@@ -312,9 +302,9 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
             </div>
 
             {/* 2. 3D Particle Environment */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Sparkle className="h-3.5 w-3.5 text-amber-400" />
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-pink-400" />
                 3D Atmosphere Particles
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -322,10 +312,10 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
                   <button
                     key={pType}
                     onClick={() => handleSelect3DParticleType(pType)}
-                    className={`rounded-lg px-2 py-1 text-center text-xs capitalize transition-all ${
+                    className={`rounded-xl px-2 py-1.5 text-center text-xs capitalize font-semibold transition-all duration-200 ${
                       currentSegment.particles3D?.type === pType
-                        ? 'bg-amber-600 text-white font-bold'
-                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-white/5'
+                        ? 'bg-pink-600 text-white shadow-sm shadow-pink-500/30'
+                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-pink-500/15'
                     }`}
                   >
                     {pType}
@@ -335,22 +325,22 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
             </div>
 
             {/* 3. Scene Lighting / Mood Adjustment */}
-            <div className="space-y-2 pt-2 border-t border-white/5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <div className="space-y-2 pt-2 border-t border-pink-500/15">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                 <Sun className="h-3.5 w-3.5 text-amber-400" />
                 3D Volumetric Lighting & Exposure
               </label>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleAdjustBrightness(-10)}
-                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 py-2 text-xs text-slate-300"
+                  className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-pink-500/20 py-2 text-xs font-semibold text-slate-200"
                 >
-                  <Moon className="h-3.5 w-3.5 text-indigo-400" />
+                  <Moon className="h-3.5 w-3.5 text-pink-400" />
                   <span>Moodier (-10%)</span>
                 </button>
                 <button
                   onClick={() => handleAdjustBrightness(10)}
-                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 py-2 text-xs text-slate-300"
+                  className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-pink-500/20 py-2 text-xs font-semibold text-slate-200"
                 >
                   <Sun className="h-3.5 w-3.5 text-amber-400" />
                   <span>Brighter (+10%)</span>
@@ -360,21 +350,21 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
 
             {/* 4. Scene Trimming & Pacing */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Scissors className="h-3.5 w-3.5 text-indigo-400" />
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Scissors className="h-3.5 w-3.5 text-pink-400" />
                 Shot Duration & Pacing
               </label>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleAdjustDuration(-5)}
-                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 py-2 text-xs text-slate-300"
+                  className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-pink-500/20 py-2 text-xs font-semibold text-slate-200"
                 >
                   <Minus className="h-3.5 w-3.5 text-rose-400" />
                   <span>Shorten (-5s)</span>
                 </button>
                 <button
                   onClick={() => handleAdjustDuration(5)}
-                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 py-2 text-xs text-slate-300"
+                  className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-pink-500/20 py-2 text-xs font-semibold text-slate-200"
                 >
                   <Plus className="h-3.5 w-3.5 text-emerald-400" />
                   <span>Extend (+5s)</span>
@@ -383,13 +373,13 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
             </div>
 
             {/* 5. Rewrite Spoken Dialogue with Scoped Audio Re-render */}
-            <div className="space-y-2 pt-2 border-t border-white/5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <div className="space-y-2 pt-2 border-t border-pink-500/15">
+              <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-indigo-400" />
+                  <FileText className="h-3.5 w-3.5 text-pink-400" />
                   Narration Track (Instant 3D Audio Sync)
                 </span>
-                <span className="text-[10px] text-slate-500 font-mono">
+                <span className="text-[10px] text-slate-400 font-mono">
                   {dialogueText.split(/\s+/).filter(Boolean).length} words
                 </span>
               </label>
@@ -397,11 +387,11 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
                 rows={3}
                 value={dialogueText}
                 onChange={(e) => setDialogueText(e.target.value)}
-                className="w-full rounded-lg bg-slate-950 border border-white/10 p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none leading-relaxed"
+                className="w-full rounded-xl bg-slate-950 border border-pink-500/20 p-2.5 text-xs text-slate-200 focus:outline-none focus:border-pink-500 resize-none leading-relaxed"
               />
               <button
                 onClick={handleApplyDialogueRewrite}
-                className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 py-1.5 text-xs font-semibold text-white transition-colors"
+                className="w-full rounded-xl bg-pink-600 hover:bg-pink-500 py-2 text-xs font-bold text-white shadow-md shadow-pink-600/30 transition-colors"
               >
                 Apply & Re-Synthesize Dialogue Track
               </button>
@@ -409,15 +399,15 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
           </div>
 
           {/* Global Soundtrack & Captions Style */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-4">
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/20 space-y-4 shadow-md">
             <h4 className="font-display text-sm font-bold text-white flex items-center gap-2">
-              <Music className="h-4 w-4 text-indigo-400" />
+              <Music className="h-4 w-4 text-pink-400" />
               <span>Background Score & Captions</span>
             </h4>
 
             {/* Music Bed Switcher */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-400 uppercase">Music Atmosphere</label>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-pink-300 uppercase">Music Atmosphere</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   'Cinematic Orchestral',
@@ -428,10 +418,10 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
                   <button
                     key={mStyle}
                     onClick={() => handleSwapMusic(mStyle)}
-                    className={`rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-all ${
+                    className={`rounded-xl px-3 py-2 text-left text-xs font-semibold transition-all duration-200 ${
                       project.musicStyle?.includes(mStyle.split(' ')[0])
-                        ? 'bg-indigo-600 text-white font-semibold'
-                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-white/5'
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30'
+                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-pink-500/15'
                     }`}
                   >
                     {mStyle}
@@ -441,22 +431,22 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
             </div>
 
             {/* Caption Style Switcher */}
-            <div className="space-y-1.5 pt-2 border-t border-white/5">
-              <label className="text-[11px] font-semibold text-slate-400 uppercase">Captions Appearance</label>
+            <div className="space-y-2 pt-2 border-t border-pink-500/15">
+              <label className="text-[11px] font-bold text-pink-300 uppercase">Captions Appearance</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'documentary', label: 'Documentary Minimal' },
                   { id: 'mrbeast', label: 'Hormozi / Pop Yellow' },
-                  { id: 'neon', label: 'Neon Cyber Blue' },
+                  { id: 'neon', label: 'Neon Cyber Pink' },
                   { id: 'netflix', label: 'Netflix Classic' },
                 ].map((cap) => (
                   <button
                     key={cap.id}
                     onClick={() => handleSwapCaptionStyle(cap.id as CaptionStyle)}
-                    className={`rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-all ${
+                    className={`rounded-xl px-3 py-2 text-left text-xs font-semibold transition-all duration-200 ${
                       project.captionStyle === cap.id
-                        ? 'bg-indigo-600 text-white font-semibold'
-                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-white/5'
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30'
+                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-pink-500/15'
                     }`}
                   >
                     {cap.label}

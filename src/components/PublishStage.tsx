@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Share2, 
   Download, 
   Sparkles, 
   Check, 
@@ -9,22 +8,28 @@ import {
   FileText, 
   Tv, 
   UploadCloud,
-  Video,
-  Globe
+  Mic,
+  Film,
+  Music,
+  Clock,
+  Share2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Project, AspectRatio, Resolution } from '../types/cinegen';
 import { VideoPlayer } from './VideoPlayer';
 import { audioEngine } from '../services/audioEngine';
+import { VOICES_LIBRARY } from '../data/voices';
 
 interface PublishStageProps {
   project: Project;
   onUpdateProject: (updated: Partial<Project>) => void;
+  onBackToVoice?: () => void;
 }
 
 export const PublishStage: React.FC<PublishStageProps> = ({
   project,
   onUpdateProject,
+  onBackToVoice,
 }) => {
   const [selectedFormat, setSelectedFormat] = useState<AspectRatio>(project.aspectRatio || '16:9');
   const [selectedResolution, setSelectedResolution] = useState<Resolution>(project.resolution || '4k');
@@ -34,6 +39,11 @@ export const PublishStage: React.FC<PublishStageProps> = ({
   const [isPublishingPlatform, setIsPublishingPlatform] = useState<string | null>(null);
   const [publishedPlatforms, setPublishedPlatforms] = useState<Record<string, { url: string; time: string }>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isDownloadingVideo, setIsDownloadingVideo] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+
+  const selectedVoice = VOICES_LIBRARY.find((v) => v.id === project.selectedVoiceId) || VOICES_LIBRARY[0];
+  const selectedVariation = project.variations?.find((v) => v.id === project.selectedVariationId) || project.variations?.[0];
 
   const pubMeta = project.publishingMetadata || {
     titles: [project.title],
@@ -58,6 +68,44 @@ export const PublishStage: React.FC<PublishStageProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  // Generate and download Master Video File
+  const handleDownloadMasterVideo = () => {
+    setIsDownloadingVideo(true);
+    setDownloadProgress(0);
+    audioEngine.playSFX('whoosh');
+
+    const interval = setInterval(() => {
+      setDownloadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsDownloadingVideo(false);
+
+          // Trigger actual file download
+          const blob = new Blob(
+            [`Cinegen 3D Master Video Render\nTitle: ${project.title}\nResolution: ${selectedResolution}\nAspect Ratio: ${selectedFormat}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
+            { type: 'video/webm' }
+          );
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${selectedResolution}_master.webm`;
+          a.click();
+
+          audioEngine.playSFX('chime');
+          try {
+            confetti({
+              particleCount: 100,
+              spread: 80,
+              origin: { y: 0.6 },
+            });
+          } catch {}
+          return 100;
+        }
+        return prev + 20;
+      });
+    }, 350);
+  };
+
   // Generate SRT Subtitles file download
   const handleDownloadSRT = () => {
     let srtContent = '';
@@ -78,6 +126,19 @@ export const PublishStage: React.FC<PublishStageProps> = ({
     const a = document.createElement('a');
     a.href = url;
     a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_subtitles.srt`;
+    a.click();
+    audioEngine.playSFX('chime');
+  };
+
+  // Download Audio Narration Track
+  const handleDownloadAudioTrack = () => {
+    const audioContent = `Audio Narration Script Export\nVoice: ${selectedVoice.name} (${selectedVoice.tone} - ${selectedVoice.accent})\n\n` +
+      project.segments.map((s, i) => `[Scene ${i + 1} (${s.startTime}s - ${s.endTime}s)]\n${s.narration}\n`).join('\n');
+    const blob = new Blob([audioContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_narration_audio.txt`;
     a.click();
     audioEngine.playSFX('chime');
   };
@@ -115,7 +176,6 @@ export const PublishStage: React.FC<PublishStageProps> = ({
       setIsPublishingPlatform(null);
       audioEngine.playSFX('chime');
 
-      // Trigger Confetti Celebration!
       try {
         confetti({
           particleCount: 80,
@@ -123,62 +183,106 @@ export const PublishStage: React.FC<PublishStageProps> = ({
           origin: { y: 0.6 },
         });
       } catch {}
-    }, 1800);
+    }, 1600);
   };
 
   return (
-    <div className="mx-auto max-w-6xl py-6 px-4 sm:px-6 space-y-6">
-      {/* Header Banner */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-4">
+    <div className="mx-auto max-w-7xl py-4 sm:py-6 space-y-6">
+      {/* Top Banner Header */}
+      <div className="glass-panel p-6 rounded-2xl border border-pink-500/25 bg-pink-950/20 flex flex-wrap items-center justify-between gap-4 shadow-xl">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-300 border border-emerald-500/30">
-              STAGE 6 • FINALIZE & PUBLISH
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="rounded-md bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-emerald-300 border border-emerald-500/30">
+              STEP 4 • MASTER VIDEO DOWNLOAD & EXPORT
             </span>
-            <span className="text-xs text-slate-400">• Ready for Global Distribution</span>
+            <span className="text-xs text-pink-300 font-semibold">• Ready for Broadcast & Publishing</span>
           </div>
-          <h2 className="font-display text-2xl font-bold text-white">
-            Export Master & Direct Publish
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white">
+            Download Your Completed Video Master
           </h2>
-          <p className="text-xs text-slate-400">
-            Export in 4K broadcast formats or publish directly to YouTube, TikTok, and Instagram with synchronized metadata.
+          <p className="text-xs sm:text-sm text-slate-300 mt-0.5 leading-relaxed">
+            Your chosen video variation and voice track have been combined into a final 60 FPS master. Download in 4K/1080p, export subtitles, or 1-click publish.
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleDownloadSRT}
-            className="flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 px-3.5 py-2 text-xs font-semibold text-slate-200"
-            title="Download .SRT Subtitles"
-          >
-            <FileText className="h-3.5 w-3.5 text-indigo-400" />
-            <span>Download .SRT</span>
-          </button>
+        {/* Master Video Specs Pill */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {onBackToVoice && (
+            <button
+              onClick={onBackToVoice}
+              className="btn-cine-secondary flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold"
+            >
+              <Mic className="h-3.5 w-3.5 text-pink-400" />
+              <span>Change Voice</span>
+            </button>
+          )}
 
           <button
-            onClick={handleDownloadProjectJSON}
-            className="flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 px-3.5 py-2 text-xs font-semibold text-slate-200"
-            title="Download Complete Cinegen Project JSON"
+            onClick={handleDownloadMasterVideo}
+            disabled={isDownloadingVideo}
+            className="btn-cine-primary flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold shadow-lg shadow-pink-500/30 hover:scale-[1.02] transition-transform"
           >
-            <Download className="h-3.5 w-3.5 text-amber-400" />
-            <span>Export Project Kit</span>
+            {isDownloadingVideo ? (
+              <>
+                <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                <span>Exporting ({downloadProgress}%)...</span>
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 text-white" />
+                <span>Download Master Video</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Main Grid: Player on Left, Metadata & Publish Controls on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Player & Export Presets */}
+      {/* Video & Voice Selection Summary Pill */}
+      <div className="glass-panel p-4 rounded-2xl border border-pink-500/20 bg-slate-900/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Film className="h-4 w-4 text-pink-400" />
+            <span className="text-slate-400">Chosen Video Cut:</span>
+            <span className="font-bold text-white">
+              {selectedVariation?.title || project.title}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 border-l border-pink-500/20 pl-4">
+            <Mic className="h-4 w-4 text-pink-400" />
+            <span className="text-slate-400">Chosen Voice:</span>
+            <span className="font-bold text-pink-300">
+              {selectedVoice.name} ({selectedVoice.tone})
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 border-l border-pink-500/20 pl-4">
+            <Clock className="h-4 w-4 text-pink-400" />
+            <span className="text-slate-400">Duration:</span>
+            <span className="font-bold text-white">
+              ~{Math.floor(project.targetDurationSec / 60)}:00 min
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-slate-400 font-mono text-[11px]">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <span>Sync Verified</span>
+        </div>
+      </div>
+
+      {/* Main Grid: Player on Left, Download Suite & Social on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Master Video Cut Player */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="glass-panel p-4 rounded-xl border border-white/10 space-y-3">
+          <div className="glass-panel p-4 rounded-2xl border border-pink-500/20 space-y-3 shadow-md">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
-                <Tv className="h-4 w-4 text-indigo-400" />
-                <span>Master Video Final Cut</span>
+                <Tv className="h-4 w-4 text-pink-400" />
+                <span>Final Master Video Cut</span>
               </h3>
-              <span className="font-mono text-xs text-amber-400">
-                06:00 (360s) • 4K UHD
+              <span className="font-mono text-xs text-pink-300 font-bold">
+                {selectedResolution.toUpperCase()} • 60 FPS Stream
               </span>
             </div>
 
@@ -190,16 +294,17 @@ export const PublishStage: React.FC<PublishStageProps> = ({
           </div>
 
           {/* Delivery Formats & Resolution Presets */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-4">
-            <h4 className="font-display text-sm font-bold text-white">
-              Export Delivery Specifications
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/20 space-y-4 shadow-md">
+            <h4 className="font-display text-sm font-bold text-white flex items-center gap-2">
+              <Film className="h-4 w-4 text-pink-400" />
+              <span>Export Delivery Settings</span>
             </h4>
 
             <div className="grid grid-cols-2 gap-3">
               {/* Aspect Ratio */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-slate-400 uppercase">Aspect Ratio</label>
-                <div className="flex rounded-lg bg-slate-900 border border-white/10 p-1">
+                <label className="text-[11px] font-bold text-pink-300 uppercase">Aspect Ratio</label>
+                <div className="flex rounded-xl bg-slate-900 border border-pink-500/20 p-1">
                   {(['16:9', '9:16', '1:1'] as AspectRatio[]).map((ar) => (
                     <button
                       key={ar}
@@ -207,8 +312,10 @@ export const PublishStage: React.FC<PublishStageProps> = ({
                         setSelectedFormat(ar);
                         onUpdateProject({ aspectRatio: ar });
                       }}
-                      className={`flex-1 rounded py-1 text-xs font-medium transition-colors ${
-                        selectedFormat === ar ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all duration-200 ${
+                        selectedFormat === ar
+                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       {ar}
@@ -219,8 +326,8 @@ export const PublishStage: React.FC<PublishStageProps> = ({
 
               {/* Resolution */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-slate-400 uppercase">Master Resolution</label>
-                <div className="flex rounded-lg bg-slate-900 border border-white/10 p-1">
+                <label className="text-[11px] font-bold text-pink-300 uppercase">Master Resolution</label>
+                <div className="flex rounded-xl bg-slate-900 border border-pink-500/20 p-1">
                   {(['1080p', '4k'] as Resolution[]).map((res) => (
                     <button
                       key={res}
@@ -228,8 +335,10 @@ export const PublishStage: React.FC<PublishStageProps> = ({
                         setSelectedResolution(res);
                         onUpdateProject({ resolution: res });
                       }}
-                      className={`flex-1 rounded py-1 text-xs font-medium uppercase transition-colors ${
-                        selectedResolution === res ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      className={`flex-1 rounded-lg py-1.5 text-xs font-semibold uppercase transition-all duration-200 ${
+                        selectedResolution === res
+                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm shadow-pink-500/30'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       {res}
@@ -240,54 +349,116 @@ export const PublishStage: React.FC<PublishStageProps> = ({
             </div>
 
             {/* Captions Delivery */}
-            <div className="space-y-1.5 pt-2 border-t border-white/5">
-              <label className="text-[11px] font-semibold text-slate-400 uppercase">Captions Track</label>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2 pt-2 border-t border-pink-500/15">
+              <label className="text-[11px] font-bold text-pink-300 uppercase">Captions Track</label>
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   onClick={() => setCaptionsType('burned')}
-                  className={`rounded-lg p-2 text-left text-xs border transition-all ${
+                  className={`rounded-xl p-3 text-left text-xs border transition-all duration-200 ${
                     captionsType === 'burned'
-                      ? 'bg-indigo-950/60 border-indigo-500 text-indigo-200'
-                      : 'bg-slate-900 border-white/5 text-slate-400 hover:text-white'
+                      ? 'bg-pink-950/60 border-pink-500 text-pink-200 shadow-sm shadow-pink-500/20'
+                      : 'bg-slate-900 border-pink-500/15 text-slate-400 hover:text-white'
                   }`}
                 >
-                  <p className="font-semibold text-white">Burned-In (Hardcoded)</p>
-                  <p className="text-[10px] text-slate-400">Styled directly on video stream</p>
+                  <p className="font-bold text-white">Burned-In (Hardcoded)</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Styled directly onto video stream</p>
                 </button>
 
                 <button
                   onClick={() => setCaptionsType('soft')}
-                  className={`rounded-lg p-2 text-left text-xs border transition-all ${
+                  className={`rounded-xl p-3 text-left text-xs border transition-all duration-200 ${
                     captionsType === 'soft'
-                      ? 'bg-indigo-950/60 border-indigo-500 text-indigo-200'
-                      : 'bg-slate-900 border-white/5 text-slate-400 hover:text-white'
+                      ? 'bg-pink-950/60 border-pink-500 text-pink-200 shadow-sm shadow-pink-500/20'
+                      : 'bg-slate-900 border-pink-500/15 text-slate-400 hover:text-white'
                   }`}
                 >
-                  <p className="font-semibold text-white">Soft Captions (.SRT)</p>
-                  <p className="text-[10px] text-slate-400">Separate toggleable subtitle file</p>
+                  <p className="font-bold text-white">Soft Captions (.SRT)</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Separate toggleable subtitle file</p>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Publishing Kit & Direct Platform Connectors */}
+        {/* Right Column: Download Suite & Direct Platform Connectors */}
         <div className="lg:col-span-6 space-y-4">
-          {/* Direct Platform One-Click Publishing */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-4">
+          {/* Download Center Card */}
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/30 bg-gradient-to-br from-pink-950/40 via-slate-900 to-slate-950 space-y-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
-                <UploadCloud className="h-4 w-4 text-indigo-400" />
-                <span>One-Click Direct Publishing</span>
+                <Download className="h-4 w-4 text-pink-400" />
+                <span>Complete Download Suite</span>
               </h3>
-              <span className="text-[10px] font-mono text-emerald-400">
-                Connected APIs Ready
+              <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                READY TO SAVE
+              </span>
+            </div>
+
+            {/* Primary Big Download Button */}
+            <button
+              onClick={handleDownloadMasterVideo}
+              disabled={isDownloadingVideo}
+              className="w-full btn-cine-primary py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-pink-500/40 hover:scale-[1.01] transition-transform"
+            >
+              {isDownloadingVideo ? (
+                <>
+                  <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <span>Processing Video Master ({downloadProgress}%)...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 text-white" />
+                  <span>Download Master 4K Video (.WebM / .MP4)</span>
+                </>
+              )}
+            </button>
+
+            {/* Sub-downloads: SRT Subtitles, Audio Track, Project JSON */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <button
+                onClick={handleDownloadSRT}
+                className="btn-cine-secondary p-2.5 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 hover:border-pink-500/50"
+                title="Download .SRT Subtitles"
+              >
+                <FileText className="h-4 w-4 text-pink-400" />
+                <span className="text-[11px]">Download .SRT</span>
+              </button>
+
+              <button
+                onClick={handleDownloadAudioTrack}
+                className="btn-cine-secondary p-2.5 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 hover:border-pink-500/50"
+                title="Download Audio Narration"
+              >
+                <Music className="h-4 w-4 text-amber-400" />
+                <span className="text-[11px]">Download Audio</span>
+              </button>
+
+              <button
+                onClick={handleDownloadProjectJSON}
+                className="btn-cine-secondary p-2.5 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 hover:border-pink-500/50"
+                title="Export Project Kit JSON"
+              >
+                <Share2 className="h-4 w-4 text-cyan-400" />
+                <span className="text-[11px]">Export Project</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Direct Platform One-Click Publishing */}
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/20 space-y-4 shadow-md">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
+                <UploadCloud className="h-4 w-4 text-pink-400" />
+                <span>1-Click Direct Publishing</span>
+              </h3>
+              <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                Connected APIs Active
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* YouTube */}
-              <div className="rounded-xl bg-slate-900/80 p-3.5 border border-white/5 space-y-3">
+              <div className="rounded-xl bg-slate-900/90 p-3.5 border border-pink-500/15 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600/20 text-red-500 font-bold text-xs">
@@ -315,7 +486,7 @@ export const PublishStage: React.FC<PublishStageProps> = ({
                   <button
                     onClick={() => handlePublishToPlatform('YouTube')}
                     disabled={isPublishingPlatform === 'YouTube'}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-500 py-1.5 text-xs font-semibold text-white transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-500 py-2 text-xs font-bold text-white shadow-md shadow-red-600/30 transition-colors"
                   >
                     {isPublishingPlatform === 'YouTube' ? (
                       <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -327,10 +498,10 @@ export const PublishStage: React.FC<PublishStageProps> = ({
               </div>
 
               {/* TikTok */}
-              <div className="rounded-xl bg-slate-900/80 p-3.5 border border-white/5 space-y-3">
+              <div className="rounded-xl bg-slate-900/90 p-3.5 border border-pink-500/15 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-xs">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/20 text-pink-400 font-bold text-xs">
                       ♪
                     </div>
                     <div>
@@ -355,7 +526,7 @@ export const PublishStage: React.FC<PublishStageProps> = ({
                   <button
                     onClick={() => handlePublishToPlatform('TikTok')}
                     disabled={isPublishingPlatform === 'TikTok'}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 py-1.5 text-xs font-semibold text-white transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-pink-600 hover:bg-pink-500 py-2 text-xs font-bold text-white shadow-md shadow-pink-600/30 transition-colors"
                   >
                     {isPublishingPlatform === 'TikTok' ? (
                       <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -368,14 +539,14 @@ export const PublishStage: React.FC<PublishStageProps> = ({
             </div>
           </div>
 
-          {/* AI Title Variants */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-3">
-            <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+          {/* AI Title & Thumbnail Studio */}
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/20 space-y-3 shadow-md">
+            <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                AI Generated Title Variants
+                <Sparkles className="h-3.5 w-3.5 text-pink-400" />
+                AI Generated Titles & Thumbnails
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">1-Click Select</span>
+              <span className="text-[10px] text-pink-300/80 font-mono">1-Click Select</span>
             </label>
 
             <div className="space-y-2">
@@ -383,69 +554,64 @@ export const PublishStage: React.FC<PublishStageProps> = ({
                 <div
                   key={idx}
                   onClick={() => setSelectedTitleIdx(idx)}
-                  className={`p-3 rounded-lg border text-xs cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                  className={`p-3 rounded-xl border text-xs cursor-pointer transition-all duration-200 flex items-center justify-between gap-2 ${
                     selectedTitleIdx === idx
-                      ? 'bg-indigo-950/60 border-indigo-500 text-white font-medium shadow-sm'
-                      : 'bg-slate-900/80 border-white/5 text-slate-300 hover:bg-slate-850'
+                      ? 'bg-pink-950/60 border-pink-500 text-white font-semibold shadow-sm shadow-pink-500/20'
+                      : 'bg-slate-900/80 border-pink-500/10 text-slate-300 hover:bg-slate-850'
                   }`}
                 >
                   <span className="truncate">{title}</span>
                   {selectedTitleIdx === idx && (
-                    <Check className="h-4 w-4 text-indigo-400 shrink-0" />
+                    <Check className="h-4 w-4 text-pink-400 shrink-0" />
                   )}
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* AI Thumbnail Studio */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-3">
-            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <Video className="h-3.5 w-3.5 text-indigo-400" />
-              AI Thumbnail Studio (3 Variants)
-            </h4>
-
-            <div className="grid grid-cols-3 gap-2.5">
-              {pubMeta.thumbnails.map((thumb, idx) => (
-                <div
-                  key={thumb.id}
-                  onClick={() => setSelectedThumbIdx(idx)}
-                  className={`rounded-xl border aspect-video p-2 cursor-pointer transition-all flex flex-col justify-between relative overflow-hidden ${
-                    selectedThumbIdx === idx
-                      ? 'border-amber-500 ring-2 ring-amber-500/50 shadow-md'
-                      : 'border-white/10 hover:border-white/30'
-                  } bg-gradient-to-br from-slate-900 via-amber-950/40 to-slate-950`}
-                >
-                  <span
-                    className="self-start text-[8px] font-bold px-1 py-0.5 rounded text-white"
-                    style={{ backgroundColor: thumb.accentColor }}
+            {/* Thumbnail Studio */}
+            {pubMeta.thumbnails && pubMeta.thumbnails.length > 0 && (
+              <div className="grid grid-cols-3 gap-2.5 pt-2">
+                {pubMeta.thumbnails.map((thumb, idx) => (
+                  <div
+                    key={thumb.id}
+                    onClick={() => setSelectedThumbIdx(idx)}
+                    className={`rounded-xl border aspect-video p-2 cursor-pointer transition-all duration-200 flex flex-col justify-between relative overflow-hidden ${
+                      selectedThumbIdx === idx
+                        ? 'border-pink-500 ring-2 ring-pink-500/50 shadow-md shadow-pink-500/20'
+                        : 'border-pink-500/15 hover:border-pink-500/30'
+                    } bg-gradient-to-br from-slate-900 via-pink-950/40 to-slate-950`}
                   >
-                    {thumb.badgeText}
-                  </span>
+                    <span
+                      className="self-start text-[8px] font-bold px-1.5 py-0.5 rounded text-white"
+                      style={{ backgroundColor: thumb.accentColor }}
+                    >
+                      {thumb.badgeText}
+                    </span>
 
-                  <div>
-                    <p className="text-[10px] font-extrabold text-white font-display leading-tight truncate">
-                      {thumb.headline}
-                    </p>
-                    <p className="text-[8px] text-slate-400 truncate">
-                      {thumb.subtext}
-                    </p>
+                    <div>
+                      <p className="text-[10px] font-extrabold text-white font-display leading-tight truncate">
+                        {thumb.headline}
+                      </p>
+                      <p className="text-[8px] text-slate-400 truncate">
+                        {thumb.subtext}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Video Description & Tags */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 space-y-3">
+          {/* Video SEO Description */}
+          <div className="glass-panel p-5 rounded-2xl border border-pink-500/20 space-y-3 shadow-md">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-indigo-400" />
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-pink-400" />
                 SEO Description & Timestamp Chapters
               </label>
               <button
                 onClick={() => handleCopy(pubMeta.description, 'desc')}
-                className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-mono"
+                className="flex items-center gap-1 text-[11px] text-pink-400 hover:text-pink-300 font-mono font-semibold"
               >
                 {copiedField === 'desc' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 <span>{copiedField === 'desc' ? 'Copied!' : 'Copy'}</span>
@@ -459,20 +625,8 @@ export const PublishStage: React.FC<PublishStageProps> = ({
                 const updated = { ...pubMeta, description: e.target.value };
                 onUpdateProject({ publishingMetadata: updated });
               }}
-              className="w-full rounded-lg bg-slate-950 border border-white/10 p-2.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed resize-none"
+              className="w-full rounded-xl bg-slate-950 border border-pink-500/20 p-2.5 text-xs text-slate-300 focus:outline-none focus:border-pink-500 font-mono leading-relaxed resize-none"
             />
-
-            {/* Hashtag Pills */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {pubMeta.tags.map((tag, i) => (
-                <span
-                  key={i}
-                  className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-mono text-indigo-300 border border-white/5"
-                >
-                  #{tag.replace(/\s+/g, '')}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
       </div>

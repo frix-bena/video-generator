@@ -1,11 +1,12 @@
 export type PipelineStage = 
   | 'prompt' 
+  | 'variety'
+  | 'voice' 
+  | 'publish'
   | 'script' 
   | 'storyboard' 
   | 'generating' 
-  | 'voice' 
-  | 'edit' 
-  | 'publish';
+  | 'edit';
 
 export type AspectRatio = '16:9' | '9:16' | '1:1';
 export type Resolution = '1080p' | '4k';
@@ -56,6 +57,26 @@ export interface Particles3DConfig {
   color: string;
   speed: number;
   size: number;
+}
+
+export interface VideoVariation {
+  id: string;
+  title: string;
+  styleName: string;
+  tagline: string;
+  description: string;
+  visualTheme: string;
+  tone: string;
+  colorGrade: string;
+  musicStyle: string;
+  captionStyle: CaptionStyle;
+  cameraStyle: string;
+  lightingEnvironment: string;
+  badge: string;
+  accentColor: string;
+  recommendedVoiceId: string;
+  render3DMode?: Render3DMode;
+  project: Project;
 }
 
 export interface SceneSegment {
@@ -175,6 +196,10 @@ export interface Project {
   publishingMetadata: PublishingMetadata;
   versionHistory: ProjectVersion[];
   currentVersion: number;
+  
+  // Video Variety Candidates
+  variations?: VideoVariation[];
+  selectedVariationId?: string;
   
   // 3D Realistic Video Engine Settings
   is3D?: boolean;

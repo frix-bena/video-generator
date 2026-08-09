@@ -1,21 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Bot, 
   X, 
   Send, 
-  Sparkles, 
   CheckCircle2, 
-  Wand2, 
-  Sliders, 
-  Mic2, 
-  Layers,
-  ChevronRight,
-  Box,
-  Compass,
-  Camera,
-  Sun
+  ChevronRight, 
+  Box
 } from 'lucide-react';
-import { Project, CopilotMessage, CaptionStyle, AspectRatio, Render3DMode, CameraTrajectory } from '../types/cinegen';
+import { Project, CopilotMessage, Render3DMode, CameraTrajectory, AspectRatio } from '../types/cinegen';
 import { VOICES_LIBRARY } from '../data/voices';
 import { audioEngine } from '../services/audioEngine';
 
@@ -107,7 +98,7 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
           particles3D: {
             type: pType as any,
             count: 450,
-            color: pType === 'embers' ? '#f59e0b' : pType === 'steam' ? '#ffffff' : '#38bdf8',
+            color: pType === 'embers' ? '#f43f5e' : pType === 'steam' ? '#ffffff' : '#ec4899',
             speed: 1.2,
             size: 0.1,
           },
@@ -151,25 +142,25 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-slate-950/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300">
+    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-slate-950/95 backdrop-blur-2xl border-l border-pink-500/25 shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300">
       {/* Drawer Header */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between bg-slate-900/60">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600/30 text-indigo-400 border border-indigo-500/40">
-            <Box className="h-4 w-4 text-amber-400" />
+      <div className="p-4 border-b border-pink-500/20 flex items-center justify-between bg-slate-900/80">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30 shadow-md">
+            <Box className="h-4 w-4 text-pink-400" />
           </div>
           <div>
             <h3 className="font-display text-sm font-bold text-white flex items-center gap-1.5">
               <span>Cinegen 3D Copilot</span>
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             </h3>
-            <p className="text-[10px] text-slate-400">Autonomous 3D Video Director</p>
+            <p className="text-[10px] text-pink-300 font-medium">Autonomous 3D Video Director</p>
           </div>
         </div>
 
         <button
           onClick={onClose}
-          className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
@@ -185,15 +176,15 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
             <div
               className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-none shadow-md'
-                  : 'glass-card bg-slate-900 border-white/10 text-slate-200 rounded-bl-none'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none shadow-md shadow-pink-500/20'
+                  : 'glass-card bg-slate-900/90 border-pink-500/20 text-slate-200 rounded-bl-none shadow-md'
               }`}
             >
               <p>{msg.text}</p>
 
               {/* Actions Performed Badge */}
               {msg.actionsPerformed && msg.actionsPerformed.length > 0 && (
-                <div className="mt-2.5 pt-2 border-t border-white/10 space-y-1">
+                <div className="mt-2.5 pt-2 border-t border-pink-500/15 space-y-1">
                   {msg.actionsPerformed.map((act, i) => (
                     <div key={i} className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
                       <CheckCircle2 className="h-3 w-3" />
@@ -214,10 +205,10 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
                   <button
                     key={idx}
                     onClick={() => handleSendMessage(sPrompt)}
-                    className="w-full text-left rounded-lg bg-slate-900/80 hover:bg-indigo-950/60 border border-white/5 hover:border-indigo-500/40 px-3 py-1.5 text-[11px] text-indigo-300 transition-all flex items-center justify-between group"
+                    className="w-full text-left rounded-xl bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/15 hover:border-pink-500/40 px-3 py-2 text-[11px] text-pink-300 transition-all duration-200 flex items-center justify-between group shadow-sm"
                   >
                     <span className="truncate">{sPrompt}</span>
-                    <ChevronRight className="h-3 w-3 text-slate-500 group-hover:text-indigo-300 transition-colors shrink-0" />
+                    <ChevronRight className="h-3 w-3 text-slate-500 group-hover:text-pink-300 transition-colors shrink-0" />
                   </button>
                 ))}
               </div>
@@ -226,8 +217,8 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
         ))}
 
         {isProcessing && (
-          <div className="flex items-center gap-2 text-xs font-mono text-indigo-400">
-            <div className="h-3.5 w-3.5 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+          <div className="flex items-center gap-2 text-xs font-mono text-pink-400 font-semibold">
+            <div className="h-3.5 w-3.5 rounded-full border-2 border-pink-400 border-t-transparent animate-spin" />
             <span>Cinegen is compiling 3D scene updates...</span>
           </div>
         )}
@@ -236,7 +227,7 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
       </div>
 
       {/* Input Box */}
-      <div className="p-3 border-t border-white/10 bg-slate-900/80">
+      <div className="p-3 border-t border-pink-500/20 bg-slate-900/90">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -249,12 +240,12 @@ export const CinegenCopilot: React.FC<CinegenCopilotProps> = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Direct 3D scene (e.g. 'Make camera orbit 360°')..."
-            className="flex-1 rounded-xl bg-slate-950 border border-white/10 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            className="flex-1 rounded-xl bg-slate-950 border border-pink-500/25 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
           />
           <button
             type="submit"
             disabled={!inputText.trim() || isProcessing}
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors shadow-md"
+            className="btn-cine-primary flex h-9 w-9 items-center justify-center rounded-xl text-white disabled:opacity-40 transition-colors shadow-md shadow-pink-500/30"
           >
             <Send className="h-3.5 w-3.5" />
           </button>
