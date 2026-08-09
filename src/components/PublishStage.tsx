@@ -74,22 +74,36 @@ export const PublishStage: React.FC<PublishStageProps> = ({
     setDownloadProgress(0);
     audioEngine.playSFX('whoosh');
 
+    const activeVideoUrl = project.videoUrl || selectedVariation?.videoUrl;
+
     const interval = setInterval(() => {
       setDownloadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsDownloadingVideo(false);
 
-          // Trigger actual file download
-          const blob = new Blob(
-            [`Cinegen 3D Master Video Render\nTitle: ${project.title}\nResolution: ${selectedResolution}\nAspect Ratio: ${selectedFormat}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
-            { type: 'video/webm' }
-          );
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${selectedResolution}_master.webm`;
-          a.click();
+          if (activeVideoUrl) {
+            // Download actual generated MP4 video URL
+            const a = document.createElement('a');
+            a.href = activeVideoUrl;
+            a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${selectedResolution}_master.mp4`;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            // Trigger fallback WebM stream download
+            const blob = new Blob(
+              [`Cinegen 3D Master Video Render\nTitle: ${project.title}\nResolution: ${selectedResolution}\nAspect Ratio: ${selectedFormat}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
+              { type: 'video/webm' }
+            );
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${selectedResolution}_master.webm`;
+            a.click();
+          }
 
           audioEngine.playSFX('chime');
           try {
@@ -101,9 +115,9 @@ export const PublishStage: React.FC<PublishStageProps> = ({
           } catch {}
           return 100;
         }
-        return prev + 20;
+        return prev + 25;
       });
-    }, 350);
+    }, 250);
   };
 
   // Generate SRT Subtitles file download

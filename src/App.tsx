@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Project, PipelineStage, ProjectVersion, AspectRatio, VideoVariation } from './types/cinegen';
 import { COFFEE_PROJECT } from './data/defaultProjects';
 import { AiGeneratorService } from './services/aiGeneratorService';
+import { VideoApiService } from './services/videoApiService';
 import { Header } from './components/Header';
 import { StageProgressBar } from './components/StageProgressBar';
 import { PromptStage } from './components/PromptStage';
@@ -11,6 +12,7 @@ import { PublishStage } from './components/PublishStage';
 import { ScriptStage } from './components/ScriptStage';
 import { StoryboardStage } from './components/StoryboardStage';
 import { EditPassStage } from './components/EditPassStage';
+import { GenerationStage } from './components/GenerationStage';
 import { CinegenCopilot } from './components/CinegenCopilot';
 import { VersionHistoryModal } from './components/VersionHistoryModal';
 import { audioEngine } from './services/audioEngine';
@@ -19,6 +21,7 @@ export function App() {
   const [project, setProject] = useState<Project>(COFFEE_PROJECT);
   const [currentStage, setCurrentStage] = useState<PipelineStage>('prompt');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string | undefined>(undefined);
   const [variations, setVariations] = useState<VideoVariation[]>([]);
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState<boolean>(false);
@@ -39,14 +42,60 @@ export function App() {
     });
   }, []);
 
-  // Handle new prompt submission -> Generates Variety of Candidate Videos
+  // Handle new prompt submission -> Generates Direct AI Video or Candidate Variations
   const handleGenerateFromPrompt = async (
     prompt: string,
-    options: { duration: number; aspectRatio: AspectRatio; autonomous: boolean; is3D?: boolean }
+    options: { 
+      duration: number; 
+      aspectRatio: AspectRatio; 
+      autonomous: boolean; 
+      is3D?: boolean;
+      model?: string;
+      generateDirectAiVideo?: boolean;
+    }
   ) => {
     setIsLoading(true);
     audioEngine.playSFX('whoosh');
 
+    // Option A: Direct AI Video Generation (Calls backend /api/generate-video)
+    if (options.generateDirectAiVideo) {
+      try {
+        const taskResponse = await VideoApiService.generateVideo({
+          prompt,
+          model: options.model,
+          aspectRatio: options.aspectRatio,
+          duration: options.duration,
+        });
+
+        setCurrentTaskId(taskResponse.taskId);
+        
+        // Also synthesize narrative arc for captions & storyboard in background
+        const baseProj = await AiGeneratorService.generateProjectFromPrompt(prompt);
+
+        setProject((prev) => ({
+          ...baseProj,
+          id: `proj_${Date.now()}`,
+          prompt,
+          aiModel: taskResponse.model,
+          generationTaskId: taskResponse.taskId,
+          generationStatus: 'processing',
+          renderProgress: 10,
+          statusMessage: taskResponse.message,
+          aspectRatio: options.aspectRatio,
+          targetDurationSec: options.duration,
+          updatedAt: new Date().toISOString(),
+        }));
+
+        setIsLoading(false);
+        audioEngine.playSFX('chime');
+        setCurrentStage('generating');
+        return;
+      } catch (err) {
+        console.error('[App] Direct AI Video generation call failed, falling back to variety:', err);
+      }
+    }
+
+    // Option B: Generate 4 Distinct Video Variations
     try {
       const result = await AiGeneratorService.generateVideoVariations(
         prompt,
@@ -63,7 +112,7 @@ export function App() {
       setIsLoading(false);
       audioEngine.playSFX('chime');
 
-      // Direct transition to Video Variety Stage for user choice
+      // Transition to Video Variety Stage for user review
       setCurrentStage('variety');
     } catch (err) {
       console.error('Generation failed:', err);
@@ -77,6 +126,7 @@ export function App() {
       ...variation.project,
       selectedVariationId: variation.id,
       variations: variations,
+      videoUrl: variation.videoUrl || project.videoUrl,
       selectedVoiceId: project.selectedVoiceId || variation.recommendedVoiceId,
       updatedAt: new Date().toISOString(),
     });
@@ -135,8 +185,25 @@ export function App() {
           />
         )}
 
+        {/* Live AI Video Rendering Stage (Active during diffusion generation) */}
+        {currentStage === 'generating' && (
+          <GenerationStage
+            project={project}
+            taskId={currentTaskId}
+            onProceed={() => {
+              setCurrentStage('voice');
+              audioEngine.playSFX('whoosh');
+            }}
+            onUpdateProject={handleUpdateProject}
+            onCancel={() => {
+              setCurrentStage('prompt');
+              audioEngine.playSFX('click');
+            }}
+          />
+        )}
+
         {/* Step 2: Video Variety Stage (User chooses best candidate video) */}
-        {(currentStage === 'variety' || currentStage === 'generating') && (
+        {currentStage === 'variety' && (
           <VideoVarietyStage
             project={project}
             variations={variations}
@@ -163,7 +230,7 @@ export function App() {
               audioEngine.playSFX('whoosh');
             }}
             onBackToVariety={() => {
-              setCurrentStage('variety');
+              setCurrentStage(project.videoUrl ? 'generating' : 'variety');
               audioEngine.playSFX('click');
             }}
           />

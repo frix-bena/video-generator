@@ -76,6 +76,8 @@ export interface VideoVariation {
   accentColor: string;
   recommendedVoiceId: string;
   render3DMode?: Render3DMode;
+  videoUrl?: string; // Generated .mp4 video URL
+  thumbnailUrl?: string;
   project: Project;
 }
 
@@ -205,6 +207,13 @@ export interface Project {
   is3D?: boolean;
   render3DMode?: Render3DMode;
   cameraMode?: 'directed' | 'interactive';
+  
+  // AI Video Generation Result & State
+  videoUrl?: string; // High-resolution .mp4 generated video URL
+  thumbnailUrl?: string;
+  generationTaskId?: string;
+  generationStatus?: 'idle' | 'starting' | 'processing' | 'completed' | 'failed';
+  aiModel?: string;
   
   // Pipeline & State
   renderProgress: number; // 0 to 100
