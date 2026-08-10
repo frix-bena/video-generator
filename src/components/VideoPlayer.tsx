@@ -66,6 +66,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordProgress, setRecordProgress] = useState<number>(0);
   const [isVideoLoading, setIsVideoLoading] = useState<boolean>(false);
+  const [isCaptionMenuOpen, setIsCaptionMenuOpen] = useState<boolean>(false);
 
   // Synchronize sourceMode when activeVideoUrl changes
   useEffect(() => {
@@ -880,30 +881,43 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
 
             {/* Captions Style Switcher */}
-            <div className="relative group">
+            <div className="relative">
               <button
-                className="flex items-center gap-1 rounded-xl bg-slate-800 border border-pink-500/20 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
-                title="Captions Style"
+                type="button"
+                onClick={() => setIsCaptionMenuOpen((prev) => !prev)}
+                className={`flex items-center gap-1 rounded-xl border px-2.5 py-1 text-xs transition-colors ${
+                  isCaptionMenuOpen 
+                    ? 'bg-pink-500/25 border-pink-500 text-pink-200 shadow-sm' 
+                    : 'bg-slate-800 border-pink-500/20 text-slate-200 hover:bg-slate-700'
+                }`}
+                title="Captions Style (Click to change)"
               >
                 <Subtitles className="h-3.5 w-3.5 text-pink-400" />
                 <span className="capitalize text-[11px] font-semibold">{captionStyle}</span>
               </button>
-              <div className="absolute right-0 bottom-full mb-1 hidden group-hover:flex flex-col rounded-xl bg-slate-900 border border-pink-500/25 p-1 shadow-2xl z-30 min-w-[130px]">
-                {(['documentary', 'mrbeast', 'netflix', 'neon', 'off'] as CaptionStyle[]).map((style) => (
-                  <button
-                    key={style}
-                    onClick={() => {
-                      setCaptionStyle(style);
-                      onUpdateProject?.({ captionStyle: style });
-                    }}
-                    className={`rounded-lg px-2.5 py-1.5 text-left text-xs capitalize transition-colors ${
-                      captionStyle === style ? 'bg-pink-600 text-white font-bold' : 'text-slate-300 hover:bg-pink-950/60 hover:text-white'
-                    }`}
-                  >
-                    {style}
-                  </button>
-                ))}
-              </div>
+              {isCaptionMenuOpen && (
+                <div 
+                  className="absolute right-0 bottom-full mb-1 flex flex-col rounded-xl bg-slate-900/95 border border-pink-500/30 p-1 shadow-2xl z-30 min-w-[130px] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                  onMouseLeave={() => setIsCaptionMenuOpen(false)}
+                >
+                  {(['documentary', 'mrbeast', 'netflix', 'neon', 'off'] as CaptionStyle[]).map((style) => (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => {
+                        setCaptionStyle(style);
+                        onUpdateProject?.({ captionStyle: style });
+                        setIsCaptionMenuOpen(false);
+                      }}
+                      className={`rounded-lg px-2.5 py-1.5 text-left text-xs capitalize transition-colors ${
+                        captionStyle === style ? 'bg-pink-600 text-white font-bold' : 'text-slate-300 hover:bg-pink-950/60 hover:text-white'
+                      }`}
+                    >
+                      {style}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Volume Control */}
