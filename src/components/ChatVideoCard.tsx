@@ -302,36 +302,81 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
           </div>
         </div>
 
+        {/* Google Veo Technical Director Inspector */}
+        <div className="rounded-xl bg-slate-950/50 border border-pink-500/15 p-3 text-xs space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="font-semibold text-slate-300 flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-pink-400" />
+              Veo 2 Engine Metadata
+            </span>
+            <span className="font-mono text-[10px] bg-pink-500/10 text-pink-300 px-2 py-0.5 rounded border border-pink-500/20">
+              1080p • 60 FPS • PBR
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+              <span className="text-slate-400 block text-[10px]">Camera Path</span>
+              <span className="text-slate-200 font-semibold truncate block">
+                {project.segments[0]?.camera3D?.trajectory.replace('_', ' ').toUpperCase() || 'ORBIT 360°'}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+              <span className="text-slate-400 block text-[10px]">Lens Preset</span>
+              <span className="text-slate-200 font-semibold truncate block">
+                {project.segments[0]?.camera3D?.lensPreset || '35mm Cine Prime'}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+              <span className="text-slate-400 block text-[10px]">Lighting Model</span>
+              <span className="text-slate-200 font-semibold truncate block">
+                {project.segments[0]?.lighting3D?.environment.replace('_', ' ').toUpperCase() || 'VOLUMETRIC'}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+              <span className="text-slate-400 block text-[10px]">Aspect Ratio</span>
+              <span className="text-slate-200 font-semibold truncate block">
+                {project.aspectRatio || '16:9'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Quick Follow-up Directives Prompt Chips */}
         {onQuickAction && (
           <div className="pt-2 border-t border-pink-500/15">
             <span className="text-[11px] font-semibold text-slate-400 block mb-2">
-              Direct the AI Agent:
+              Direct the AI Agent (or type your instruction in chat):
             </span>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => onQuickAction("Change voice to Sir Arthur (British Documentary)")}
+                onClick={() => onQuickAction(project.aspectRatio === '9:16' ? "Convert format to 16:9 Widescreen" : "Convert format to 9:16 Vertical for TikTok and Shorts")}
                 className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
               >
-                🎙️ Change voice to Sir Arthur
+                📱 {project.aspectRatio === '9:16' ? 'Convert to 16:9 Widescreen' : 'Convert to 9:16 Vertical'}
               </button>
               <button
-                onClick={() => onQuickAction("Convert format to 9:16 Vertical for TikTok and Shorts")}
+                onClick={() => onQuickAction("Switch camera motion to 360° orbital trajectory")}
                 className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
               >
-                📱 Convert to 9:16 Vertical
+                🎥 360° Orbit Camera
               </button>
               <button
                 onClick={() => onQuickAction("Make scene lighting warmer with Golden Hour sunset tones")}
                 className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
               >
-                ✨ Warmer lighting (Golden Hour)
+                🌅 Golden Hour Sunset
               </button>
               <button
-                onClick={() => onQuickAction("Switch 3D camera to 360° orbital trajectory")}
+                onClick={() => onQuickAction("Switch camera to high-speed FPV aerial drone flythrough")}
                 className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
               >
-                🎥 Orbit 360° camera motion
+                🚁 FPV Drone Flythrough
+              </button>
+              <button
+                onClick={() => onQuickAction("Change narrator voice to Sir Arthur (British Documentary)")}
+                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
+              >
+                🎙️ Voice: Sir Arthur
               </button>
             </div>
           </div>
@@ -350,3 +395,4 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
     </div>
   );
 };
+

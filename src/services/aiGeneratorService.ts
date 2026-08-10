@@ -399,37 +399,7 @@ export class AiGeneratorService {
       message: 'Realistic 3D Master Video synthesized! Ready for playback & publishing.',
     });
 
-    if (isCoffee) {
-      return {
-        ...COFFEE_PROJECT,
-        id: `proj-${Date.now()}`,
-        prompt: cleanPrompt,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
-
-    if (isTitan) {
-      return this.createTitanProject(cleanPrompt);
-    }
-
-    if (isQuantum) {
-      return this.createQuantumProject(cleanPrompt);
-    }
-
-    if (isDeepSea) {
-      return this.createDeepSeaProject(cleanPrompt);
-    }
-
-    if (isCity) {
-      return this.createCityProject(cleanPrompt);
-    }
-
-    if (isPyramid) {
-      return this.createPyramidProject(cleanPrompt);
-    }
-
-    // Dynamic Generator for any arbitrary prompt
+    // Dynamic Semantic Generator for ANY arbitrary prompt
     return this.createCustomProject(cleanPrompt);
   }
 
@@ -1234,53 +1204,370 @@ Produced autonomously by Cinegen 3D AI Video Studio.
   }
 
   private static createCustomProject(prompt: string): Project {
-    const title = `The Definitive Story: ${prompt.slice(0, 45)}... (3D Master)`;
-    const segments: SceneSegment[] = COFFEE_PROJECT.segments.map((seg, i) => ({
-      ...seg,
-      id: `custom-3d-${i + 1}`,
-      title: `Chapter ${i + 1}: ${i === 0 ? 'The Genesis' : i === 1 ? 'The Catalyst' : i === 2 ? 'The Expansion' : i === 3 ? 'The Industrial Shift' : i === 4 ? 'The Science' : i === 5 ? 'The Artisan Revival' : i === 6 ? 'The Modern Breakthrough' : 'The Horizon'}`,
-      visualPrompt: `Photorealistic 3D cinematic scene depicting ${prompt} with dynamic lighting and camera motion`,
-      visualTheme: 'custom',
-      is3D: true,
-      camera3D: {
-        trajectory: (i % 3 === 0 ? 'orbit_360' : i % 3 === 1 ? 'macro_push' : 'drone_flyover') as CameraTrajectory,
-        fov: 45,
-        startPos: [6, 4, 8],
-        endPos: [-6, 2, 6],
-        lookAt: [0, 0, 0],
-        lensPreset: '50mm Cinema Prime f/1.4',
+    const pLower = prompt.toLowerCase();
+
+    // 1. Semantic Domain Classifier
+    let domain: 'nature_wildlife' | 'scifi_space' | 'cyberpunk_city' | 'ancient_history' | 'deepsea_ocean' | 'culinary_food' | 'quantum_tech' | 'automotive_action' | 'fantasy_magic' | 'cinematic_landscape' = 'cinematic_landscape';
+    let visualTheme = 'custom';
+    let defaultVoiceId = 'voice-attenborough';
+    let tone = 'Cinematic 3D Blockbuster • High Fidelity Visuals & Dynamic Trajectories';
+    let colorGrade = 'Kodak 2383 Golden Amber & Deep Contrast LUT';
+    let musicStyle = 'Hans Zimmer Style Hybrid Orchestral & Deep Brass';
+    let defaultParticleType: 'dust' | 'steam' | 'embers' | 'sparks' | 'rain' | 'bubbles' | 'stardust' | 'sandstorm' | 'none' = 'dust';
+    let defaultLightingEnv: 'golden_hour' | 'deep_space' | 'cyberpunk_neon' | 'underwater_abyss' | 'studio_softbox' | 'desert_sunset' | 'highland_mist' = 'golden_hour';
+
+    if (pLower.includes('lion') || pLower.includes('tiger') || pLower.includes('leopard') || pLower.includes('wolf') || pLower.includes('bear') || pLower.includes('animal') || pLower.includes('wildlife') || pLower.includes('safari') || pLower.includes('jungle') || pLower.includes('forest') || pLower.includes('savanna') || pLower.includes('bird') || pLower.includes('eagle')) {
+      domain = 'nature_wildlife';
+      visualTheme = 'nature';
+      defaultVoiceId = 'voice-attenborough';
+      tone = 'NatGeo Wildlife Masterpiece • Pristine Macro Detail & Sweeping Habitats';
+      colorGrade = 'Natural Organic 35mm Film Stock with Rich Foliage Greens';
+      musicStyle = 'Organic Orchestral Strings, Tribal Percussion & Atmospheric Flutes';
+      defaultParticleType = 'dust';
+      defaultLightingEnv = 'golden_hour';
+    } else if (pLower.includes('titan') || pLower.includes('mars') || pLower.includes('space') || pLower.includes('astronaut') || pLower.includes('galaxy') || pLower.includes('star') || pLower.includes('planet') || pLower.includes('nebula') || pLower.includes('black hole') || pLower.includes('orbit') || pLower.includes('supernova') || pLower.includes('spaceship') || pLower.includes('cosmos')) {
+      domain = 'scifi_space';
+      visualTheme = 'scifi_titan';
+      defaultVoiceId = 'voice-marcus';
+      tone = 'Interstellar Epic • Vast Cosmic Scale & Volumetric Starlight';
+      colorGrade = 'Deep Space Indigo & Radiant Golden Starfire LUT';
+      musicStyle = 'Deep Analog Synthesizers & Massive Cosmic Horn Swells';
+      defaultParticleType = 'stardust';
+      defaultLightingEnv = 'deep_space';
+    } else if (pLower.includes('cyberpunk') || pLower.includes('tokyo') || pLower.includes('neon') || pLower.includes('robot') || pLower.includes('android') || pLower.includes('futuristic') || pLower.includes('city') || pLower.includes('megacity') || pLower.includes('blade runner') || pLower.includes('synthwave')) {
+      domain = 'cyberpunk_city';
+      visualTheme = 'city';
+      defaultVoiceId = 'voice-kenji';
+      tone = 'High-Speed Cyberpunk Velocity • Volumetric Neon & Kinetic Drone Tracking';
+      colorGrade = 'Blade Runner Neon Cyan & Radiant Magenta LUT';
+      musicStyle = 'Cyberpunk Synthwave Electronic Pulse with Heavy Bass Drops';
+      defaultParticleType = 'rain';
+      defaultLightingEnv = 'cyberpunk_neon';
+    } else if (pLower.includes('egypt') || pLower.includes('pyramid') || pLower.includes('rome') || pLower.includes('roman') || pLower.includes('greece') || pLower.includes('samurai') || pLower.includes('medieval') || pLower.includes('viking') || pLower.includes('ancient') || pLower.includes('temple') || pLower.includes('history') || pLower.includes('pharaoh') || pLower.includes('empire') || pLower.includes('gladiator')) {
+      domain = 'ancient_history';
+      visualTheme = 'pyramid';
+      defaultVoiceId = 'voice-attenborough';
+      tone = 'Monumental Historical Epic • Ancient Golden Architecture & Sunstone Grandeur';
+      colorGrade = 'Kodak 2383 Golden Sandstone & Sunset Crimson LUT';
+      musicStyle = 'Ancient Bronze Horns, Deep War Drums & Ethereal Choir';
+      defaultParticleType = 'sandstorm';
+      defaultLightingEnv = 'desert_sunset';
+    } else if (pLower.includes('ocean') || pLower.includes('sea') || pLower.includes('deep') || pLower.includes('water') || pLower.includes('shark') || pLower.includes('whale') || pLower.includes('jellyfish') || pLower.includes('coral') || pLower.includes('abyss') || pLower.includes('underwater') || pLower.includes('trench') || pLower.includes('submersible')) {
+      domain = 'deepsea_ocean';
+      visualTheme = 'deepsea';
+      defaultVoiceId = 'voice-elena';
+      tone = 'Mesmerizing Oceanic Odyssey • Bioluminescent Caustics & Liquid Light';
+      colorGrade = 'Abyssal Midnight Blue & Phosphorescent Cyan Shimmer';
+      musicStyle = 'Ambient Aquatic Soundscapes, Sub-Bass Pulses & Ethereal Glass Harmonica';
+      defaultParticleType = 'bubbles';
+      defaultLightingEnv = 'underwater_abyss';
+    } else if (pLower.includes('coffee') || pLower.includes('food') || pLower.includes('burger') || pLower.includes('steak') || pLower.includes('pizza') || pLower.includes('chef') || pLower.includes('culinary') || pLower.includes('restaurant') || pLower.includes('cooking') || pLower.includes('baking') || pLower.includes('espresso') || pLower.includes('chocolate') || pLower.includes('wine')) {
+      domain = 'culinary_food';
+      visualTheme = 'coffee';
+      defaultVoiceId = 'voice-sophia';
+      tone = 'Sensory Artisan Cinema • Hyper-Detailed Macro Textures & Warm Ambient Light';
+      colorGrade = 'Warm Espresso Amber & Rich Roasted Mahogany LUT';
+      musicStyle = 'Sophisticated Jazz Acoustic Trio & Warm Acoustic Bass';
+      defaultParticleType = 'steam';
+      defaultLightingEnv = 'golden_hour';
+    } else if (pLower.includes('quantum') || pLower.includes('ai') || pLower.includes('neural') || pLower.includes('tech') || pLower.includes('computing') || pLower.includes('chip') || pLower.includes('silicon') || pLower.includes('algorithm') || pLower.includes('physics') || pLower.includes('science') || pLower.includes('laser')) {
+      domain = 'quantum_tech';
+      visualTheme = 'quantum';
+      defaultVoiceId = 'voice-kenji';
+      tone = 'Frontier Science & Supercomputing • Clean Geometry & Holographic Data Streams';
+      colorGrade = 'Cobalt Cleanroom Blue & Radiant Hologram Gold LUT';
+      musicStyle = 'Minimalist Upbeat Lo-Fi Tech Beats & Precision Digital Pulses';
+      defaultParticleType = 'stardust';
+      defaultLightingEnv = 'studio_softbox';
+    } else if (pLower.includes('car') || pLower.includes('ferrari') || pLower.includes('porsche') || pLower.includes('racing') || pLower.includes('f1') || pLower.includes('drift') || pLower.includes('motorcycle') || pLower.includes('speed') || pLower.includes('engine') || pLower.includes('vehicle')) {
+      domain = 'automotive_action';
+      visualTheme = 'city';
+      defaultVoiceId = 'voice-marcus';
+      tone = 'High-Octane Dynamic Automotive Cinema • Low-Angle Tracking & Kinetic Motion';
+      colorGrade = 'High-Contrast Carbon Fiber & Metallic Velocity LUT';
+      musicStyle = 'Fast-Paced Hybrid Action Rock & Electronic Bass Pulse';
+      defaultParticleType = 'sparks';
+      defaultLightingEnv = 'golden_hour';
+    } else if (pLower.includes('dragon') || pLower.includes('fantasy') || pLower.includes('magic') || pLower.includes('castle') || pLower.includes('wizard') || pLower.includes('island') || pLower.includes('mystical') || pLower.includes('floating')) {
+      domain = 'fantasy_magic';
+      visualTheme = 'custom';
+      defaultVoiceId = 'voice-attenborough';
+      tone = 'Enchanted Mythic Fantasy • Luminous Volumetric Auras & Floating Vistas';
+      colorGrade = 'Emerald Enchantment & Radiant Starlight Gold LUT';
+      musicStyle = 'Epic Celtic Fantasy Orchestra with Ethereal Vocal Choirs';
+      defaultParticleType = 'embers';
+      defaultLightingEnv = 'highland_mist';
+    }
+
+    // Directorial Camera Overrides from User Prompt
+    let userCameraTrajectory: CameraTrajectory | null = null;
+    if (pLower.includes('orbit') || pLower.includes('360')) userCameraTrajectory = 'orbit_360';
+    else if (pLower.includes('drone') || pLower.includes('aerial')) userCameraTrajectory = 'drone_flyover';
+    else if (pLower.includes('fpv') || pLower.includes('flythrough')) userCameraTrajectory = 'fpv_flythrough';
+    else if (pLower.includes('macro') || pLower.includes('close up') || pLower.includes('close-up')) userCameraTrajectory = 'macro_push';
+    else if (pLower.includes('crane') || pLower.includes('boom')) userCameraTrajectory = 'crane_rise';
+    else if (pLower.includes('dolly')) userCameraTrajectory = 'cinematic_dolly';
+    else if (pLower.includes('spiral')) userCameraTrajectory = 'spiral_reveal';
+
+    // Directorial Lighting Overrides from User Prompt
+    if (pLower.includes('golden hour') || pLower.includes('sunrise') || pLower.includes('warm')) defaultLightingEnv = 'golden_hour';
+    else if (pLower.includes('sunset') || pLower.includes('dusk')) defaultLightingEnv = 'desert_sunset';
+    else if (pLower.includes('neon') || pLower.includes('cyber')) defaultLightingEnv = 'cyberpunk_neon';
+    else if (pLower.includes('fog') || pLower.includes('mist')) defaultLightingEnv = 'highland_mist';
+    else if (pLower.includes('space') || pLower.includes('dark')) defaultLightingEnv = 'deep_space';
+    else if (pLower.includes('underwater')) defaultLightingEnv = 'underwater_abyss';
+
+    // Directorial Particle Overrides from User Prompt
+    if (pLower.includes('rain')) defaultParticleType = 'rain';
+    else if (pLower.includes('snow') || pLower.includes('blizzard')) defaultParticleType = 'stardust';
+    else if (pLower.includes('ember') || pLower.includes('fire')) defaultParticleType = 'embers';
+    else if (pLower.includes('spark')) defaultParticleType = 'sparks';
+    else if (pLower.includes('bubble')) defaultParticleType = 'bubbles';
+    else if (pLower.includes('steam') || pLower.includes('smoke')) defaultParticleType = 'steam';
+    else if (pLower.includes('sand') || pLower.includes('dust')) defaultParticleType = 'sandstorm';
+
+    // Generate formatted Title
+    const subjectClean = prompt
+      .replace(/generate|create|make|produce|video|cinematic|film|shot|on|in|4k|60fps|3d|hd|documentary/gi, '')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 5)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ') || 'The Cinematic Journey';
+
+    const projectTitle = `${subjectClean}: Google Veo Cinematic Master`;
+
+    // 2. Generate 8 Comprehensive Timestamped Scenes
+    const sceneBlueprints = [
+      {
+        title: `Chapter 1: The Overture — ${subjectClean}`,
+        duration: 45,
+        narration: `In the vast tapestry of our world, few phenomena capture the imagination quite like ${prompt.slice(0, 60)}. From the very first light of dawn, an extraordinary symphony of forces begins to unfold, setting the stage for a cinematic journey of unprecedented scale and breathtaking wonder.`,
+        shotType: 'Grand Establishing Vista • 24mm Ultra-Wide Anamorphic',
+        movement: 'Sweeping 3D aerial panoramic glide revealing the panoramic landscape with volumetric morning godrays',
+        sfx: 'Ethereal ambient drone swell, distant wind rush, gentle sub-bass vibration',
+        lowerThird: `${subjectClean.toUpperCase()} • OVERTURE`,
+        trajectory: userCameraTrajectory || 'drone_flyover',
+        fov: 52,
+        lens: '24mm Ultra-Wide Cine Prime f/1.8',
+        startPos: [0, 8, 16] as [number, number, number],
+        endPos: [0, 3, -10] as [number, number, number],
       },
-      lighting3D: {
-        environment: 'golden_hour',
-        keyLightColor: '#fde047',
-        fillLightColor: '#1e1b4b',
-        rimLightColor: '#38bdf8',
-        ambientIntensity: 0.7,
-        directionalIntensity: 2.2,
-        volumetricFog: true,
-        fogColor: '#05070e',
-        fogDensity: 0.02,
+      {
+        title: `Chapter 2: The Formative Genesis`,
+        duration: 45,
+        narration: `To truly comprehend what we see today, we must look deeper into the origins. Every contour, surface texture, and radiant reflection carries the signature of countless transformations. Nothing here is accidental; every element is engineered by physical law and profound evolution.`,
+        shotType: 'Slow Cinematic Tracking Shot • 35mm Prime f/1.4',
+        movement: 'Slow orbital push-in with continuous focus tracking across the main focal elements',
+        sfx: 'Deep cello resonance, subtle crystalline chime, mechanical or organic ambient harmonics',
+        lowerThird: 'ORIGIN & ARCHITECTURE • TIMECODE 00:45',
+        trajectory: userCameraTrajectory || 'orbit_360',
+        fov: 46,
+        lens: '35mm Prime f/1.4',
+        startPos: [8, 4, 8] as [number, number, number],
+        endPos: [-8, 3, 8] as [number, number, number],
       },
-      particles3D: {
-        type: 'dust',
-        count: 400,
-        color: '#fde047',
-        speed: 0.8,
-        size: 0.09,
+      {
+        title: `Chapter 3: The Microscopic Anatomy`,
+        duration: 45,
+        narration: `Up close, a hidden universe reveals itself. Microscopic details, pristine physical materials, and dynamic light refractions dance across the frame at sixty frames per second. At this macro scale, the boundary between art and physics dissolves completely.`,
+        shotType: 'Extreme Macro Depth of Field • 85mm Macro Cine',
+        movement: 'Intimate macro dolly push gliding within inches of surface textures with shallow depth of field',
+        sfx: 'Crisp high-frequency sparkle, subtle heartbeat pulse, focused ambient breeze',
+        lowerThird: 'MACRO PERSPECTIVE • 85MM T1.5',
+        trajectory: userCameraTrajectory || 'macro_push',
+        fov: 36,
+        lens: '85mm Macro Cine f/2.0',
+        startPos: [0, 3, 7] as [number, number, number],
+        endPos: [0, 0.5, 3.2] as [number, number, number],
       },
-      mesh3dObjects: ['HeroProceduralObject', 'GyroRing1', 'GyroRing2', 'FloatingMonoliths_8x'],
-    }));
+      {
+        title: `Chapter 4: The Dynamic Shift`,
+        duration: 45,
+        narration: `Suddenly, the atmosphere intensifies. Currents shift, shadows lengthen, and kinetic motion takes command of the frame. In this crucible of energy, we witness the decisive moment that defines this entire spectacle.`,
+        shotType: 'High-Speed Kinetic Flight • 24mm Anamorphic 60 FPS',
+        movement: 'Dynamic 360-degree rotational spiral cutting through volumetric haze and atmospheric particles',
+        sfx: 'Massive brass hit, accelerating whoosh sweep, driving percussion cadence',
+        lowerThird: 'DYNAMIC CONVERGENCE • 60 FPS MOTION',
+        trajectory: userCameraTrajectory || 'fpv_flythrough',
+        fov: 58,
+        lens: '24mm Anamorphic f/1.8',
+        startPos: [0, 6, 14] as [number, number, number],
+        endPos: [0, 1.5, -14] as [number, number, number],
+      },
+      {
+        title: `Chapter 5: The Crucible of Mastery`,
+        duration: 45,
+        narration: `Centuries of observation and refinement lead directly to this apex. Whether through natural selection, human engineering, or raw celestial power, the balance achieved here is fragile yet virtually indestructible under pressure.`,
+        shotType: 'Low-Angle Architectural Pan • 50mm Anamorphic Prime',
+        movement: 'Steadicam tracking shot moving alongside the central subjects with dramatic rim lighting',
+        sfx: 'Warm French horn chorale, deep sub-drop, rhythmic metallic or natural pulses',
+        lowerThird: 'STRUCTURAL EQUILIBRIUM • MASTER CADENCE',
+        trajectory: userCameraTrajectory || 'cinematic_dolly',
+        fov: 44,
+        lens: '50mm Anamorphic Prime f/1.2',
+        startPos: [-7, 3, 9] as [number, number, number],
+        endPos: [7, 2, 7] as [number, number, number],
+      },
+      {
+        title: `Chapter 6: The Peak Crescendo`,
+        duration: 45,
+        narration: `Now, every thread converges into a single, breathtaking climax. The lighting reaches its golden zenith, and the full majesty of ${subjectClean} stands revealed in uncompromising cinematic clarity.`,
+        shotType: 'Epic Crane Rise & Reveal • 35mm Hollywood Prime',
+        movement: 'Vertical crane boom rising sixty feet into the sky to reveal the monumental surrounding vista',
+        sfx: 'Full orchestral crescendo, soaring strings, triumphant tympani roll',
+        lowerThird: 'THE CLIMAX • PEAK MAGNITUDE',
+        trajectory: userCameraTrajectory || 'crane_rise',
+        fov: 48,
+        lens: '35mm Studio Prime f/1.4',
+        startPos: [0, 1, 8] as [number, number, number],
+        endPos: [0, 12, 16] as [number, number, number],
+      },
+      {
+        title: `Chapter 7: The Global Echo`,
+        duration: 45,
+        narration: `The resonance of this journey extends far beyond what meets the eye. Across borders, across disciplines, and across generations, its influence continues to inspire explorers, creators, and visionaries worldwide.`,
+        shotType: 'Golden Hour Atmospheric Glide • 50mm Prime f/1.2',
+        movement: 'Gentle horizontal pan catching the setting sun reflections and warm volumetric glow',
+        sfx: 'Contemplative acoustic piano, warm strings swell, soothing ambient harmonics',
+        lowerThird: 'GLOBAL RESONANCE • TIMELESS HORIZON',
+        trajectory: userCameraTrajectory || 'spiral_reveal',
+        fov: 42,
+        lens: '50mm Prime f/1.2',
+        startPos: [6, 4, 7] as [number, number, number],
+        endPos: [-6, 2, 6] as [number, number, number],
+      },
+      {
+        title: `Chapter 8: The Endless Horizon (Epilogue)`,
+        duration: 45,
+        narration: `As the final embers of light fade into twilight, we are reminded that every ending is simply the prologue to another discovery. The story of ${subjectClean} will endure, forever etched into our collective imagination.`,
+        shotType: 'Infinite Depth Twilight Pull-Back • 24mm Ultra-Wide',
+        movement: 'Slow atmospheric pull-back into the twilight stars as the ambient score fades into silence',
+        sfx: 'Gentle ambient fade, soft wind chime trail, deep resonant final tone',
+        lowerThird: 'EPILOGUE • THE ENDLESS HORIZON',
+        trajectory: userCameraTrajectory || 'orbit_360',
+        fov: 50,
+        lens: '24mm Ultra-Wide f/1.8',
+        startPos: [0, 3, 9] as [number, number, number],
+        endPos: [0, 10, 22] as [number, number, number],
+      },
+    ];
+
+    let currentTimestamp = 0;
+    const segments: SceneSegment[] = sceneBlueprints.map((bp, i) => {
+      const startTime = currentTimestamp;
+      const endTime = currentTimestamp + bp.duration;
+      currentTimestamp = endTime;
+
+      return {
+        id: `veo-scene-${i + 1}`,
+        index: i,
+        title: bp.title,
+        startTime,
+        endTime,
+        duration: bp.duration,
+        narration: bp.narration,
+        speaker: 'Narrator',
+        wordCount: bp.narration.split(/\s+/).length,
+        shotType: bp.shotType,
+        setting: `${prompt} in realistic cinematic 3D environment with dynamic lighting and atmosphere`,
+        lighting: `Volumetric ${defaultLightingEnv.replace('_', ' ')} with directional rim lighting and ambient fill`,
+        cameraMovement: bp.movement,
+        continuityTag: `PROP_HERO_${subjectClean.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_01`,
+        lowerThirdText: bp.lowerThird,
+        sfxCue: bp.sfx,
+        visualMood: tone,
+        visualPrompt: `Photorealistic 3D cinematic scene depicting ${prompt} with ${bp.shotType.toLowerCase()}, volumetric atmospheric lighting and 60 FPS motion`,
+        visualTheme,
+        visualKeywords: [prompt, subjectClean, domain, 'cinematic 3d', 'photorealistic', '60fps'],
+        is3D: true,
+        camera3D: {
+          trajectory: bp.trajectory,
+          fov: bp.fov,
+          startPos: bp.startPos,
+          endPos: bp.endPos,
+          lookAt: [0, 0, 0],
+          lensPreset: bp.lens,
+        },
+        lighting3D: {
+          environment: defaultLightingEnv,
+          keyLightColor: defaultLightingEnv === 'golden_hour' ? '#fde047' : defaultLightingEnv === 'cyberpunk_neon' ? '#06b6d4' : defaultLightingEnv === 'underwater_abyss' ? '#0284c7' : '#f59e0b',
+          fillLightColor: defaultLightingEnv === 'cyberpunk_neon' ? '#f43f5e' : defaultLightingEnv === 'deep_space' ? '#1e1b4b' : '#334155',
+          rimLightColor: defaultLightingEnv === 'cyberpunk_neon' ? '#a855f7' : '#38bdf8',
+          ambientIntensity: 0.75,
+          directionalIntensity: 2.4,
+          volumetricFog: true,
+          fogColor: defaultLightingEnv === 'deep_space' ? '#050714' : defaultLightingEnv === 'cyberpunk_neon' ? '#080518' : '#0f0a06',
+          fogDensity: 0.018,
+        },
+        particles3D: {
+          type: defaultParticleType,
+          count: 500,
+          color: defaultParticleType === 'rain' ? '#38bdf8' : defaultParticleType === 'embers' ? '#f97316' : defaultParticleType === 'stardust' ? '#a78bfa' : '#fde047',
+          speed: 1.0,
+          size: 0.1,
+        },
+        mesh3dObjects: ['HeroProceduralObject', 'GyroRing1', 'GyroRing2', 'FloatingMonoliths_8x'],
+      };
+    });
 
     return {
       ...COFFEE_PROJECT,
-      id: `proj-custom-${Date.now()}`,
-      title,
+      id: `proj-veo-${Date.now()}`,
+      title: projectTitle,
       prompt,
-      logline: `A captivating 6-minute realistic 3D cinematic journey exploring the depth, history, and future of ${prompt}.`,
-      tone: 'Cinematic Broadcast Documentary • Realistic 3D PBR',
+      logline: `A captivating 6-minute Google Veo realistic cinematic 3D odyssey exploring the depths, beauty, and monumental scale of ${prompt}.`,
+      tone,
+      colorGrade,
+      musicStyle,
+      captionStyle: 'documentary',
+      selectedVoiceId: defaultVoiceId,
       is3D: true,
       render3DMode: 'cinematic_pbr',
+      targetDurationSec: 360,
+      aspectRatio: '16:9',
+      resolution: '1080p',
       segments,
+      publishingMetadata: {
+        titles: [
+          projectTitle,
+          `${subjectClean}: The Untold Documentary (4K 60FPS)`,
+          `Beyond the Known: ${subjectClean}`,
+          `${subjectClean} Explained in 6 Minutes`,
+        ],
+        selectedTitleIndex: 0,
+        description: `Experience the definitive 6-minute realistic cinematic journey through ${prompt}. Generated with Google Veo AI Video Engine featuring 60 FPS motion, dynamic 3D camera trajectories, and synchronized voice narration.`,
+        tags: [subjectClean.toLowerCase(), 'google veo', 'ai video', 'cinematic 3d', '4k 60fps', 'documentary', 'narrated'],
+        selectedThumbnailIndex: 0,
+        thumbnails: [
+          {
+            id: 't-1',
+            label: 'Cinematic Grandeur',
+            bgTheme: visualTheme,
+            headline: subjectClean.toUpperCase(),
+            subtext: 'The Definitive 3D Master',
+            badgeText: 'GOOGLE VEO',
+            accentColor: '#f43f5e',
+          },
+          {
+            id: 't-2',
+            label: 'Epic Discovery',
+            bgTheme: visualTheme,
+            headline: 'THE UNTOLD STORY',
+            subtext: `Inside ${subjectClean}`,
+            badgeText: '4K 60FPS',
+            accentColor: '#ec4899',
+          },
+        ],
+        platformConnections: {
+          youtube: { connected: true, channelName: 'Veo Cinematic 4K', privacy: 'public', category: 'Film & Animation' },
+          tiktok: { connected: true, accountName: '@veo_director', allowDuet: true },
+          instagram: { connected: false, accountName: '', shareToFeed: true },
+          x: { connected: true, handle: '@VeoDirector' },
+        },
+        publishHistory: [],
+      },
     };
   }
 }
+

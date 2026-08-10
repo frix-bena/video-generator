@@ -7,14 +7,19 @@ import {
   Volume2, 
   VolumeX, 
   PlusCircle, 
-  Box, 
   Film, 
   Tv, 
   Smartphone, 
   Square, 
-  Clock
+  Camera,
+  Sun,
+  Video,
+  Layers,
+  Wand2,
+  SlidersHorizontal,
+  Compass
 } from 'lucide-react';
-import { Project, AspectRatio } from '../types/cinegen';
+import { Project, AspectRatio, CameraTrajectory } from '../types/cinegen';
 import { VOICES_LIBRARY } from '../data/voices';
 import { AiGeneratorService, GenerationProgress } from '../services/aiGeneratorService';
 import { audioEngine } from '../services/audioEngine';
@@ -29,49 +34,15 @@ export interface ChatMessageItem {
   isGenerating?: boolean;
   generationProgress?: GenerationProgress;
   actions?: string[];
-  suggestedPrompts?: string[];
 }
-
-const INSPIRATION_PROMPTS = [
-  {
-    title: 'The Secret Origins of Coffee',
-    desc: 'Mystical Ethiopian highlands to modern artisan roasting culture',
-    prompt: 'Produce an epic cinematic documentary about the origins of coffee, from ancient Ethiopian highlands to third-wave espresso craft',
-    icon: '☕',
-  },
-  {
-    title: 'Descent into Saturn’s Moon Titan',
-    desc: 'Atmospheric entry, methane rivers, and deep space exploration',
-    prompt: 'Create a realistic sci-fi 3D documentary detailing human exploration and landing on Saturn’s giant frozen moon Titan',
-    icon: '🚀',
-  },
-  {
-    title: 'Cyberpunk Neo-Tokyo 2099',
-    desc: 'Kinetic neon flythroughs, glowing holograms, and synthwave beats',
-    prompt: 'Generate a high-speed cyberpunk video through rainy Neo-Tokyo skyscrapers with glowing neon volumetric lighting and 60 FPS motion',
-    icon: '🤖',
-  },
-  {
-    title: 'Mysteries of the Deep Sea Abyss',
-    desc: 'Bioluminescent ocean trenches and unexplored marine life',
-    prompt: 'An atmospheric documentary exploring the deepest trenches of the ocean with bioluminescent creatures and ambient aquatic soundscapes',
-    icon: '🌊',
-  },
-];
 
 export const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([
     {
       id: 'welcome-msg',
       sender: 'agent',
-      text: "👋 Welcome! I am your **AI Video Director**. Describe any video concept you'd like to create, and I'll generate a full cinematic video with realistic 3D visuals, motion, narrative script, and synchronized voiceover audio.\n\nOnce ready, you can easily change the narrator voice, direct adjustments, or download your master video.",
+      text: "👋 Welcome to **Google Veo AI Video Generator**.\n\nI generate high-definition cinematic videos with realistic 3D spatial motion, temporal consistency, dynamic camera trajectories, and synchronized voice narration.\n\nType any video concept below to begin — feel free to include cinematic director controls such as camera motion (Orbit 360, FPV Drone, Dolly, Macro Push), lighting (Golden Hour, Cyberpunk Neon, Volumetric Fog), lens focal lengths (24mm, 35mm, 50mm, 85mm), and aspect ratio.",
       timestamp: 'Just now',
-      suggestedPrompts: [
-        '☕ The Secret Origins of Coffee',
-        '🚀 Descent into Saturn’s Moon Titan',
-        '🤖 Cyberpunk Neo-Tokyo 2099',
-        '🌊 Mysteries of the Deep Sea Abyss',
-      ],
     },
   ]);
 
@@ -80,6 +51,7 @@ export const ChatInterface: React.FC = () => {
   const [activeAspectRatio, setActiveAspectRatio] = useState<AspectRatio>('16:9');
   const [activeDuration, setActiveDuration] = useState<number>(360);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [showDirectorTools, setShowDirectorTools] = useState<boolean>(true);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -94,7 +66,21 @@ export const ChatInterface: React.FC = () => {
     setInputText(e.target.value);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+    }
+  };
+
+  // Append Director Tag to Prompt
+  const handleAppendDirectorTag = (tag: string) => {
+    audioEngine.playSFX('click');
+    setInputText((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return tag;
+      if (trimmed.toLowerCase().includes(tag.toLowerCase())) return trimmed;
+      return `${trimmed}, ${tag}`;
+    });
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
   };
 
@@ -113,14 +99,8 @@ export const ChatInterface: React.FC = () => {
       {
         id: `welcome-${Date.now()}`,
         sender: 'agent',
-        text: "🎬 Started a fresh conversation. What video would you like to create next?",
+        text: "🎬 Started a fresh Google Veo video session. Describe what video you would like to generate next, including any cinematic style, lens, or camera movement directives.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedPrompts: [
-          '☕ The Secret Origins of Coffee',
-          '🚀 Descent into Saturn’s Moon Titan',
-          '🤖 Cyberpunk Neo-Tokyo 2099',
-          '🌊 Mysteries of the Deep Sea Abyss',
-        ],
       },
     ]);
   };
@@ -165,7 +145,7 @@ export const ChatInterface: React.FC = () => {
 
     audioEngine.playSFX('whoosh');
 
-    // 1. Check if the user is asking to modify an existing video in the chat
+    // 1. Check if the user is asking to modify an existing video in the chat (Conversational Video-to-Video)
     const latestVideoMsg = [...messages].reverse().find((m) => m.project);
     const lowerText = text.toLowerCase();
 
@@ -176,14 +156,14 @@ export const ChatInterface: React.FC = () => {
       (lowerText.includes('voice') && lowerText.includes(v.gender.toLowerCase()))
     );
 
-    if (matchingVoice && latestVideoMsg && latestVideoMsg.project) {
+    if (matchingVoice && latestVideoMsg && latestVideoMsg.project && (lowerText.includes('voice') || lowerText.includes('narrat') || lowerText.includes('change') || lowerText.includes('switch') || lowerText.includes('use '))) {
       handleUpdateMessageProject(latestVideoMsg.id, { selectedVoiceId: matchingVoice.id });
       audioEngine.playSFX('chime');
 
       const agentReply: ChatMessageItem = {
         id: `agent-voice-${Date.now()}`,
         sender: 'agent',
-        text: `🎙️ I've updated the narrator voice to **${matchingVoice.name}** (${matchingVoice.accent} • ${matchingVoice.tone}). The video narration audio is now synchronized.`,
+        text: `🎙️ **Narrator Voice Updated**: Switched to **${matchingVoice.name}** (${matchingVoice.accent} • ${matchingVoice.tone}). Spoken narration audio and subtitles are re-synchronized.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         actions: [`Swapped narrator voice to ${matchingVoice.name}`],
       };
@@ -192,28 +172,73 @@ export const ChatInterface: React.FC = () => {
     }
 
     // Check for aspect ratio change intent
-    if ((lowerText.includes('9:16') || lowerText.includes('vertical') || lowerText.includes('tiktok') || lowerText.includes('shorts')) && latestVideoMsg && latestVideoMsg.project) {
+    if ((lowerText.includes('9:16') || lowerText.includes('vertical') || lowerText.includes('tiktok') || lowerText.includes('shorts') || lowerText.includes('reels')) && latestVideoMsg && latestVideoMsg.project && (lowerText.includes('convert') || lowerText.includes('change') || lowerText.includes('switch') || lowerText.includes('format') || lowerText.includes('aspect') || lowerText.length < 30)) {
       handleUpdateMessageProject(latestVideoMsg.id, { aspectRatio: '9:16' });
+      setActiveAspectRatio('9:16');
       audioEngine.playSFX('chime');
 
       const agentReply: ChatMessageItem = {
         id: `agent-format-${Date.now()}`,
         sender: 'agent',
-        text: `📱 Re-framed the video canvas to **9:16 Vertical format** for TikTok, YouTube Shorts, and Instagram Reels.`,
+        text: `📱 **Aspect Ratio Re-framed**: Canvas converted to **9:16 Vertical format** optimized for TikTok, YouTube Shorts, and Instagram Reels with dynamic smart framing.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, agentReply]);
       return;
     }
 
-    if ((lowerText.includes('16:9') || lowerText.includes('widescreen') || lowerText.includes('horizontal') || lowerText.includes('landscape')) && latestVideoMsg && latestVideoMsg.project) {
+    if ((lowerText.includes('16:9') || lowerText.includes('widescreen') || lowerText.includes('horizontal') || lowerText.includes('landscape') || lowerText.includes('cinema')) && latestVideoMsg && latestVideoMsg.project && (lowerText.includes('convert') || lowerText.includes('change') || lowerText.includes('switch') || lowerText.includes('format') || lowerText.includes('aspect') || lowerText.length < 30)) {
       handleUpdateMessageProject(latestVideoMsg.id, { aspectRatio: '16:9' });
+      setActiveAspectRatio('16:9');
       audioEngine.playSFX('chime');
 
       const agentReply: ChatMessageItem = {
         id: `agent-format-${Date.now()}`,
         sender: 'agent',
-        text: `🖥️ Re-framed the video canvas to **16:9 Widescreen format**.`,
+        text: `🖥️ **Aspect Ratio Re-framed**: Canvas converted to **16:9 Widescreen Cinema format** for standard broadcast and desktop playback.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, agentReply]);
+      return;
+    }
+
+    // Check for camera trajectory modification intent
+    const isCameraDirective = lowerText.includes('camera') || lowerText.includes('orbit') || lowerText.includes('drone') || lowerText.includes('fpv') || lowerText.includes('crane') || lowerText.includes('macro') || lowerText.includes('dolly');
+    if (isCameraDirective && latestVideoMsg && latestVideoMsg.project && (lowerText.includes('change') || lowerText.includes('switch') || lowerText.includes('make') || lowerText.includes('trajectory') || lowerText.length < 40)) {
+      let targetTrajectory: CameraTrajectory = 'orbit_360';
+      let trajName = '360° Orbital Trajectory';
+      if (lowerText.includes('drone') || lowerText.includes('aerial')) {
+        targetTrajectory = 'drone_flyover';
+        trajName = 'Aerial Drone Flyover';
+      } else if (lowerText.includes('fpv') || lowerText.includes('flythrough')) {
+        targetTrajectory = 'fpv_flythrough';
+        trajName = 'FPV Kinetic Flythrough';
+      } else if (lowerText.includes('macro') || lowerText.includes('close')) {
+        targetTrajectory = 'macro_push';
+        trajName = 'Macro Push-In Close-Up';
+      } else if (lowerText.includes('crane') || lowerText.includes('boom')) {
+        targetTrajectory = 'crane_rise';
+        trajName = 'Crane Rise & Reveal';
+      } else if (lowerText.includes('dolly')) {
+        targetTrajectory = 'cinematic_dolly';
+        trajName = 'Cinematic Dolly Track';
+      }
+
+      const updatedSegs = latestVideoMsg.project.segments.map((s) => ({
+        ...s,
+        camera3D: {
+          ...(s.camera3D || { fov: 45, startPos: [6, 4, 8] as [number, number, number], endPos: [-6, 2, 6] as [number, number, number], lookAt: [0, 0, 0] as [number, number, number], lensPreset: '35mm Prime' }),
+          trajectory: targetTrajectory,
+        }
+      }));
+
+      handleUpdateMessageProject(latestVideoMsg.id, { segments: updatedSegs });
+      audioEngine.playSFX('chime');
+
+      const agentReply: ChatMessageItem = {
+        id: `agent-cam-${Date.now()}`,
+        sender: 'agent',
+        text: `🎥 **Camera Directive Applied**: Re-calculated 3D spline camera trajectories to **${trajName}** across all scenes. Motion coherence updated to 60 FPS.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, agentReply]);
@@ -221,37 +246,56 @@ export const ChatInterface: React.FC = () => {
     }
 
     // Check for lighting / atmosphere modifications
-    if (lowerText.includes('golden hour') || lowerText.includes('warmer') || lowerText.includes('sunset')) {
-      if (latestVideoMsg && latestVideoMsg.project) {
-        const updatedSegs: typeof latestVideoMsg.project.segments = latestVideoMsg.project.segments.map((seg) => ({
-          ...seg,
-          lighting3D: {
-            environment: 'golden_hour',
-            keyLightColor: '#fde047',
-            fillLightColor: '#78350f',
-            rimLightColor: '#38bdf8',
-            ambientIntensity: 0.8,
-            directionalIntensity: 2.4,
-            volumetricFog: true,
-            fogColor: '#1a0d05',
-            fogDensity: 0.015,
-          },
-        }));
-        handleUpdateMessageProject(latestVideoMsg.id, { segments: updatedSegs });
-        audioEngine.playSFX('chime');
+    if ((lowerText.includes('golden hour') || lowerText.includes('warmer') || lowerText.includes('sunset') || lowerText.includes('neon') || lowerText.includes('cyberpunk') || lowerText.includes('fog') || lowerText.includes('lighting')) && latestVideoMsg && latestVideoMsg.project && (lowerText.includes('make') || lowerText.includes('change') || lowerText.includes('switch') || lowerText.includes('adjust') || lowerText.length < 40)) {
+      let env: 'golden_hour' | 'cyberpunk_neon' | 'highland_mist' | 'desert_sunset' = 'golden_hour';
+      let envLabel = 'Golden Hour Sunset';
+      let keyColor = '#fde047';
+      let fillColor = '#78350f';
+      let rimColor = '#38bdf8';
 
-        const agentReply: ChatMessageItem = {
-          id: `agent-light-${Date.now()}`,
-          sender: 'agent',
-          text: `✨ Adjusted 3D scene lighting to **Golden Hour Sunset** with warm amber fill and volumetric haze.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        setMessages((prev) => [...prev, agentReply]);
-        return;
+      if (lowerText.includes('neon') || lowerText.includes('cyberpunk')) {
+        env = 'cyberpunk_neon';
+        envLabel = 'Cyberpunk Volumetric Neon';
+        keyColor = '#06b6d4';
+        fillColor = '#f43f5e';
+        rimColor = '#a855f7';
+      } else if (lowerText.includes('fog') || lowerText.includes('mist')) {
+        env = 'highland_mist';
+        envLabel = 'Atmospheric Volumetric Mist';
+        keyColor = '#ffffff';
+        fillColor = '#334155';
+        rimColor = '#fde047';
       }
+
+      const updatedSegs = latestVideoMsg.project.segments.map((seg) => ({
+        ...seg,
+        lighting3D: {
+          environment: env,
+          keyLightColor: keyColor,
+          fillLightColor: fillColor,
+          rimLightColor: rimColor,
+          ambientIntensity: 0.8,
+          directionalIntensity: 2.5,
+          volumetricFog: true,
+          fogColor: env === 'cyberpunk_neon' ? '#080518' : '#1a0d05',
+          fogDensity: 0.018,
+        },
+      }));
+
+      handleUpdateMessageProject(latestVideoMsg.id, { segments: updatedSegs });
+      audioEngine.playSFX('chime');
+
+      const agentReply: ChatMessageItem = {
+        id: `agent-light-${Date.now()}`,
+        sender: 'agent',
+        text: `✨ **Lighting Model Re-rendered**: Adjusted PBR scene lighting shaders to **${envLabel}** with volumetric scattering and dynamic rim highlights.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, agentReply]);
+      return;
     }
 
-    // 2. Full AI Video Generation Pipeline
+    // 2. Full Google Veo AI Video Generation Pipeline
     setIsGenerating(true);
     const agentMsgId = `agent-gen-${Date.now()}`;
 
@@ -261,13 +305,13 @@ export const ChatInterface: React.FC = () => {
       {
         id: agentMsgId,
         sender: 'agent',
-        text: `Synthesizing your cinematic video for: "${text}"...`,
+        text: `Synthesizing Google Veo video for: "${text}"...`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isGenerating: true,
         generationProgress: {
           stage: 'script',
           percent: 15,
-          message: 'Deconstructing prompt into 3D narrative arc & scenes...',
+          message: 'Deconstructing semantic prompt into 3D cinematic camera paths & narrative arc...',
         },
       },
     ]);
@@ -303,10 +347,10 @@ export const ChatInterface: React.FC = () => {
               ...m,
               isGenerating: false,
               project: generatedProject,
-              text: `Here is your generated video: **${generatedProject.title}**!\n\nI've produced 8 scenes with cinematic camera trajectories, PBR materials, and synchronized voice narration. You can play the video, choose a different narrator voice, or download the master below.`,
+              text: `🎬 Here is your generated video: **${generatedProject.title}**!\n\nI've produced 8 scenes with 60 FPS temporal camera motion, PBR volumetric lighting, and synchronized voice narration. You can play the video, switch narrator voices, adjust camera & lighting directives, or download the master video below.`,
               actions: [
                 'Scripted 8 cinematic narrative scenes',
-                'Compiled WebGL 3D camera spline motion',
+                'Compiled 60 FPS 3D camera spline motion',
                 'Synchronized voiceover audio narration',
                 'Mastered audio score and subtitles',
               ],
@@ -346,28 +390,31 @@ export const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 w-full border-b border-pink-500/20 bg-slate-950/90 backdrop-blur-xl px-4 sm:px-6 py-3 shadow-lg shrink-0">
+      {/* Google Veo Top Header */}
+      <header className="sticky top-0 z-30 w-full border-b border-pink-500/20 bg-slate-950/95 backdrop-blur-2xl px-4 sm:px-6 py-3 shadow-lg shrink-0">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          {/* Logo & Title */}
+          {/* Logo & Google Veo Title */}
           <div className="flex items-center gap-3 select-none">
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 via-rose-500 to-fuchsia-600 p-0.5 shadow-lg shadow-pink-500/25">
               <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-slate-950">
-                <Box className="h-5 w-5 text-pink-400" />
+                <Video className="h-5 w-5 text-pink-400" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-display text-base sm:text-lg font-extrabold tracking-tight text-white">
-                  CINEGEN <span className="text-pink-400">AI</span>
+                <h1 className="font-display text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
+                  GOOGLE <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-fuchsia-400">VEO</span>
                 </h1>
-                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Agent Ready
+                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                  <Sparkles className="h-2.5 w-2.5 text-pink-400" />
+                  Veo 2 Engine
+                </span>
+                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+                  1080p 60 FPS
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Autonomous Video & Voice Creation Agent
+                High-Fidelity Autonomous AI Video & Voice Director
               </p>
             </div>
           </div>
@@ -383,11 +430,24 @@ export const ChatInterface: React.FC = () => {
               {isMuted ? <VolumeX className="h-4 w-4 text-slate-500" /> : <Volume2 className="h-4 w-4 text-pink-400" />}
             </button>
 
-            {/* New Conversation Button */}
+            {/* Toggle Director Toolbar */}
+            <button
+              onClick={() => setShowDirectorTools(!showDirectorTools)}
+              title="Toggle Director Tools Toolbar"
+              className={`p-2 rounded-xl border transition-all ${
+                showDirectorTools
+                  ? 'bg-pink-500/20 border-pink-500 text-pink-300'
+                  : 'bg-slate-900/80 border-pink-500/20 text-slate-400 hover:text-white'
+              }`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
+
+            {/* New Video Chat Button */}
             <button
               onClick={handleNewConversation}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-pink-500/20 hover:border-pink-500/40 text-slate-200 hover:text-white transition-all"
-              title="Start a new chat"
+              title="Start a new video session"
             >
               <PlusCircle className="h-3.5 w-3.5 text-pink-400" />
               <span className="hidden sm:inline">New Video</span>
@@ -398,7 +458,7 @@ export const ChatInterface: React.FC = () => {
 
       {/* Main Chat Stream */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 custom-scrollbar">
-        <div className="mx-auto max-w-4xl space-y-6 pb-28">
+        <div className="mx-auto max-w-4xl space-y-6 pb-36">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -429,15 +489,15 @@ export const ChatInterface: React.FC = () => {
 
                   {/* Generation In-Progress Animated Card */}
                   {message.isGenerating && message.generationProgress && (
-                    <div className="mt-4 rounded-xl bg-slate-950/80 border border-pink-500/30 p-4 space-y-3">
+                    <div className="mt-4 rounded-xl bg-slate-950/90 border border-pink-500/30 p-4 space-y-3 shadow-inner">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5">
                           <div className="h-4 w-4 rounded-full border-2 border-pink-400 border-t-transparent animate-spin" />
-                          <span className="text-xs font-bold text-pink-300">
-                            {message.generationProgress.stage.toUpperCase()} STAGE
+                          <span className="text-xs font-bold text-pink-300 uppercase tracking-wider">
+                            GOOGLE VEO • {message.generationProgress.stage.toUpperCase()} STAGE
                           </span>
                         </div>
-                        <span className="text-xs font-mono font-bold text-slate-300">
+                        <span className="text-xs font-mono font-bold text-slate-200 bg-pink-500/20 px-2 py-0.5 rounded border border-pink-500/30">
                           {message.generationProgress.percent}%
                         </span>
                       </div>
@@ -454,35 +514,6 @@ export const ChatInterface: React.FC = () => {
                         <Sparkles className="h-3.5 w-3.5 text-pink-400 shrink-0" />
                         {message.generationProgress.message}
                       </p>
-                    </div>
-                  )}
-
-                  {/* Suggested Inspiration Prompts for Welcome message */}
-                  {message.suggestedPrompts && (
-                    <div className="mt-4 pt-3 border-t border-pink-500/15 space-y-2.5">
-                      <span className="text-[11px] font-bold text-slate-400 block tracking-wide uppercase">
-                        Inspiring Video Concepts to Try:
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {INSPIRATION_PROMPTS.map((item, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleSendMessage(item.prompt)}
-                            disabled={isGenerating}
-                            className="p-2.5 rounded-xl bg-slate-950/60 hover:bg-pink-950/50 border border-pink-500/20 hover:border-pink-500/50 text-left transition-all group flex items-start gap-2.5"
-                          >
-                            <span className="text-lg mt-0.5">{item.icon}</span>
-                            <div>
-                              <div className="font-semibold text-xs text-slate-200 group-hover:text-pink-300 transition-colors">
-                                {item.title}
-                              </div>
-                              <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                                {item.desc}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -517,61 +548,109 @@ export const ChatInterface: React.FC = () => {
         </div>
       </main>
 
-      {/* Floating Bottom Prompt Input Area */}
+      {/* Floating Bottom Prompt Input & Veo Director Area */}
       <footer className="fixed bottom-0 inset-x-0 z-30 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pt-6 pb-4 px-4 sm:px-6 pointer-events-none">
-        <div className="mx-auto max-w-4xl pointer-events-auto">
-          {/* Format & Option Selector Pills */}
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1 text-xs">
-            <div className="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-pink-500/20 shadow-md">
-              <span className="text-[11px] font-semibold text-slate-400 px-2 flex items-center gap-1">
-                <Film className="h-3 w-3 text-pink-400" />
-                Aspect Ratio:
-              </span>
-              <button
-                type="button"
-                onClick={() => setActiveAspectRatio('16:9')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                  activeAspectRatio === '16:9'
-                    ? 'bg-pink-500 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Tv className="h-3 w-3" />
-                16:9 Widescreen
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAspectRatio('9:16')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                  activeAspectRatio === '9:16'
-                    ? 'bg-pink-500 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Smartphone className="h-3 w-3" />
-                9:16 Shorts / TikTok
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAspectRatio('1:1')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                  activeAspectRatio === '1:1'
-                    ? 'bg-pink-500 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Square className="h-3 w-3" />
-                1:1 Square
-              </button>
-            </div>
+        <div className="mx-auto max-w-4xl pointer-events-auto space-y-2">
+          {/* Format & Veo Director Toolbar */}
+          {showDirectorTools && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs animate-in fade-in slide-in-from-bottom-1 duration-200">
+              {/* Aspect Ratio Selector */}
+              <div className="flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-pink-500/20 shadow-md">
+                <span className="text-[11px] font-semibold text-slate-400 px-2 flex items-center gap-1">
+                  <Film className="h-3 w-3 text-pink-400" />
+                  Aspect:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveAspectRatio('16:9')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                    activeAspectRatio === '16:9'
+                      ? 'bg-pink-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Tv className="h-3 w-3" />
+                  16:9 Cinema
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAspectRatio('9:16')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                    activeAspectRatio === '9:16'
+                      ? 'bg-pink-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Smartphone className="h-3 w-3" />
+                  9:16 Shorts/TikTok
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAspectRatio('1:1')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                    activeAspectRatio === '1:1'
+                      ? 'bg-pink-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Square className="h-3 w-3" />
+                  1:1 Square
+                </button>
+              </div>
 
-            <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400">
-              <Clock className="h-3 w-3 text-pink-400" />
-              <span>Full ~6 Min 3D Master with synchronized audio</span>
+              {/* Quick Director Keyword Attachment Pills */}
+              <div className="flex items-center gap-1 overflow-x-auto py-0.5 custom-scrollbar">
+                <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline px-1 flex items-center gap-1">
+                  <Wand2 className="h-3 w-3 text-pink-400" />
+                  Directives:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleAppendDirectorTag('360° orbit camera')}
+                  className="px-2 py-0.8 rounded-lg text-[11px] font-medium bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/20 text-slate-300 hover:text-pink-200 transition-all whitespace-nowrap"
+                >
+                  🎥 Orbit 360°
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAppendDirectorTag('FPV aerial drone flyover')}
+                  className="px-2 py-0.8 rounded-lg text-[11px] font-medium bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/20 text-slate-300 hover:text-pink-200 transition-all whitespace-nowrap"
+                >
+                  🚁 FPV Drone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAppendDirectorTag('golden hour sunset lighting')}
+                  className="px-2 py-0.8 rounded-lg text-[11px] font-medium bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/20 text-slate-300 hover:text-pink-200 transition-all whitespace-nowrap"
+                >
+                  🌅 Golden Hour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAppendDirectorTag('volumetric cyberpunk neon')}
+                  className="px-2 py-0.8 rounded-lg text-[11px] font-medium bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/20 text-slate-300 hover:text-pink-200 transition-all whitespace-nowrap"
+                >
+                  ✨ Cyber Neon
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAppendDirectorTag('35mm anamorphic prime lens f/1.4')}
+                  className="px-2 py-0.8 rounded-lg text-[11px] font-medium bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/20 text-slate-300 hover:text-pink-200 transition-all whitespace-nowrap"
+                >
+                  🔍 35mm Prime
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAppendDirectorTag('60 FPS cinematic motion')}
+                  className="px-2 py-0.8 rounded-lg text-[11px] font-medium bg-slate-900/80 hover:bg-pink-950/60 border border-pink-500/20 text-slate-300 hover:text-pink-200 transition-all whitespace-nowrap"
+                >
+                  ⚡ 60 FPS
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Input Box Card */}
+          {/* User Prompt Input Box */}
           <div className="relative rounded-2xl bg-slate-900/95 border border-pink-500/30 p-2 shadow-2xl shadow-pink-500/10 backdrop-blur-2xl focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500/50 transition-all">
             <div className="flex items-end gap-2">
               <textarea
@@ -579,7 +658,7 @@ export const ChatInterface: React.FC = () => {
                 value={inputText}
                 onChange={handleTextareaChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe the video you want to create (e.g. 'An epic documentary about ancient Egyptian pyramids with dramatic orchestral music')..."
+                placeholder="Describe any video to generate with Google Veo (e.g. 'A snow leopard leaping across Himalayan cliffs at sunrise in 4K with dramatic 35mm anamorphic camera and cinematic orchestral score')..."
                 disabled={isGenerating}
                 rows={1}
                 className="flex-1 max-h-36 min-h-[44px] bg-transparent px-3 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none resize-none custom-scrollbar leading-relaxed"
@@ -591,6 +670,7 @@ export const ChatInterface: React.FC = () => {
                 onClick={() => handleSendMessage()}
                 disabled={!inputText.trim() || isGenerating}
                 className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-500/25 hover:shadow-pink-500/40 hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 shrink-0"
+                title="Generate Video (Enter)"
               >
                 {isGenerating ? (
                   <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
@@ -605,3 +685,5 @@ export const ChatInterface: React.FC = () => {
     </div>
   );
 };
+
+export default ChatInterface;
