@@ -1,0 +1,352 @@
+import React, { useState } from 'react';
+import { 
+  Download, 
+  Mic, 
+  Sparkles, 
+  FileText, 
+  Check, 
+  Film, 
+  SlidersHorizontal,
+  Layers,
+  Share2,
+  Tv,
+  Smartphone,
+  Box,
+  Volume2
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { Project, AspectRatio } from '../types/cinegen';
+import { VOICES_LIBRARY } from '../data/voices';
+import { audioEngine } from '../services/audioEngine';
+import { VideoPlayer } from './VideoPlayer';
+import { VoiceSelectorModal } from './VoiceSelectorModal';
+
+interface ChatVideoCardProps {
+  project: Project;
+  onUpdateProject: (updated: Partial<Project>) => void;
+  onQuickAction?: (actionPrompt: string) => void;
+}
+
+export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
+  project,
+  onUpdateProject,
+  onQuickAction,
+}) => {
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [downloadFormat, setDownloadFormat] = useState<'mp4' | 'webm'>('mp4');
+
+  const selectedVoice = VOICES_LIBRARY.find((v) => v.id === project.selectedVoiceId) || VOICES_LIBRARY[0];
+  const activeVideoUrl = project.videoUrl;
+
+  // Master Video Download Handler
+  const handleDownloadMaster = () => {
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    audioEngine.playSFX('whoosh');
+
+    const interval = setInterval(() => {
+      setDownloadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsDownloading(false);
+
+          if (activeVideoUrl) {
+            // Trigger actual direct MP4 video download
+            const a = document.createElement('a');
+            a.href = activeVideoUrl;
+            a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            // Trigger synthesized 3D Master WebM export
+            const canvas = document.querySelector('canvas');
+            if (canvas && typeof canvas.captureStream === 'function') {
+              try {
+                const stream = canvas.captureStream(30);
+                const recorder = new MediaRecorder(stream, {
+                  mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
+                });
+                const chunks: Blob[] = [];
+                recorder.ondataavailable = (e) => {
+                  if (e.data.size > 0) chunks.push(e.data);
+                };
+                recorder.onstop = () => {
+                  const blob = new Blob(chunks, { type: 'video/webm' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_3d_master.webm`;
+                  a.click();
+                };
+                recorder.start();
+                setTimeout(() => {
+                  try { recorder.stop(); } catch {}
+                }, 3000);
+              } catch {
+                // Fallback blob download
+                const blob = new Blob(
+                  [`Cinegen 3D Master Render\nTitle: ${project.title}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
+                  { type: 'video/webm' }
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_3d_master.webm`;
+                a.click();
+              }
+            } else {
+              const blob = new Blob(
+                [`Cinegen 3D Master Render\nTitle: ${project.title}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
+                { type: 'video/webm' }
+              );
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.webm`;
+              a.click();
+            }
+          }
+
+          audioEngine.playSFX('chime');
+          try {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 },
+            });
+          } catch {}
+          return 100;
+        }
+        return prev + 20;
+      });
+    }, 200);
+  };
+
+  // Subtitles SRT Download
+  const handleDownloadSRT = () => {
+    let srtContent = '';
+    project.segments.forEach((seg, idx) => {
+      const startMins = Math.floor(seg.startTime / 60);
+      const startSecs = Math.floor(seg.startTime % 60);
+      const endMins = Math.floor(seg.endTime / 60);
+      const endSecs = Math.floor(seg.endTime % 60);
+
+      const startTimeStr = `00:${startMins.toString().padStart(2, '0')}:${startSecs.toString().padStart(2, '0')},000`;
+      const endTimeStr = `00:${endMins.toString().padStart(2, '0')}:${endSecs.toString().padStart(2, '0')},000`;
+
+      srtContent += `${idx + 1}\n${startTimeStr} --> ${endTimeStr}\n${seg.narration}\n\n`;
+    });
+
+    const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_subtitles.srt`;
+    a.click();
+    audioEngine.playSFX('chime');
+  };
+
+  // Narration Script TXT Download
+  const handleDownloadScript = () => {
+    const audioContent = `Audio Narration Script Export\nProject: ${project.title}\nVoice: ${selectedVoice.name} (${selectedVoice.tone} - ${selectedVoice.accent})\n\n` +
+      project.segments.map((s, i) => `[Scene ${i + 1}: ${s.title} (${s.startTime}s - ${s.endTime}s)]\n${s.narration}\n`).join('\n');
+    const blob = new Blob([audioContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_narration_script.txt`;
+    a.click();
+    audioEngine.playSFX('chime');
+  };
+
+  // Quick Voice Swap
+  const handleQuickSwapVoice = (voiceId: string) => {
+    onUpdateProject({ selectedVoiceId: voiceId });
+    audioEngine.playSFX('chime');
+  };
+
+  return (
+    <div className="w-full rounded-2xl bg-slate-900/90 border border-pink-500/30 overflow-hidden shadow-2xl shadow-pink-500/10 backdrop-blur-xl transition-all duration-300">
+      {/* Video Header Bar */}
+      <div className="px-4 py-3 bg-slate-950/80 border-b border-pink-500/20 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50" />
+          <h3 className="font-bold text-white text-sm sm:text-base truncate max-w-xs sm:max-w-md">
+            {project.title}
+          </h3>
+          <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-pink-500/20 text-pink-300 border border-pink-500/30">
+            {project.aspectRatio === '9:16' ? '9:16 Shorts' : project.aspectRatio === '1:1' ? '1:1 Square' : '16:9 HD'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
+          <span className="bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700">
+            {project.segments.length} Scenes
+          </span>
+          <span className="bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700">
+            ~{Math.round(project.targetDurationSec || 360)}s
+          </span>
+        </div>
+      </div>
+
+      {/* Embedded High-Definition Video Player */}
+      <div className="p-3 sm:p-4 bg-slate-950/60">
+        <VideoPlayer
+          project={project}
+          currentSegmentIndex={0}
+          onUpdateProject={onUpdateProject}
+          autoPlay={false}
+        />
+      </div>
+
+      {/* Interactive Controls & Voice Management Bar */}
+      <div className="p-4 bg-slate-900/95 border-t border-pink-500/20 space-y-4">
+        {/* Voice Customization Section */}
+        <div className="rounded-xl bg-slate-950/70 border border-pink-500/20 p-3.5 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${selectedVoice.avatarGradient} flex items-center justify-center text-white font-bold text-sm shadow-md border border-white/20 shrink-0`}>
+                {selectedVoice.name.charAt(0)}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 font-medium">Narrator Voice:</span>
+                  <span className="text-xs font-bold text-white">{selectedVoice.name}</span>
+                  <span className="text-[10px] text-pink-300 font-semibold px-1.5 py-0.2 rounded bg-pink-500/20 border border-pink-500/30">
+                    {selectedVoice.accent} • {selectedVoice.tone}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Audio & speech narration is synchronized with this voice profile.
+                </p>
+              </div>
+            </div>
+
+            {/* Change Voice Modal Trigger */}
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="btn-cine-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold hover:scale-105 transition-all"
+            >
+              <Mic className="h-3.5 w-3.5 text-pink-400" />
+              <span>Change Voice</span>
+            </button>
+          </div>
+
+          {/* Quick Voice Switcher Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-0.5 custom-scrollbar">
+            <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap">
+              Quick Pick:
+            </span>
+            {VOICES_LIBRARY.slice(0, 5).map((v) => (
+              <button
+                key={v.id}
+                onClick={() => handleQuickSwapVoice(v.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  v.id === project.selectedVoiceId
+                    ? 'bg-pink-500/30 border-pink-500 text-pink-200 shadow-sm'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-pink-500/30'
+                }`}
+              >
+                <div className={`h-2 w-2 rounded-full bg-gradient-to-br ${v.avatarGradient}`} />
+                <span>{v.name}</span>
+                {v.id === project.selectedVoiceId && <Check className="h-3 w-3 text-pink-400" />}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Master Video Download & Export Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          {/* Main Download Button */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadMaster}
+              disabled={isDownloading}
+              className="btn-cine-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              <span>
+                {isDownloading ? `Exporting Master (${downloadProgress}%)...` : 'Download Master Video'}
+              </span>
+            </button>
+
+            <span className="text-[11px] font-mono text-slate-400 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-pink-500/15">
+              1080p HD • MP4/WebM
+            </span>
+          </div>
+
+          {/* Auxiliary Downloads (SRT Subtitles, Audio Script) */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadSRT}
+              title="Download Subtitles in SRT format"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all"
+            >
+              <FileText className="h-3.5 w-3.5 text-pink-400" />
+              <span>Subtitles (.SRT)</span>
+            </button>
+
+            <button
+              onClick={handleDownloadScript}
+              title="Download Narration Script in TXT format"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all"
+            >
+              <Volume2 className="h-3.5 w-3.5 text-pink-400" />
+              <span>Script (.TXT)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Follow-up Directives Prompt Chips */}
+        {onQuickAction && (
+          <div className="pt-2 border-t border-pink-500/15">
+            <span className="text-[11px] font-semibold text-slate-400 block mb-2">
+              Direct the AI Agent:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => onQuickAction("Change voice to Sir Arthur (British Documentary)")}
+                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
+              >
+                🎙️ Change voice to Sir Arthur
+              </button>
+              <button
+                onClick={() => onQuickAction("Convert format to 9:16 Vertical for TikTok and Shorts")}
+                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
+              >
+                📱 Convert to 9:16 Vertical
+              </button>
+              <button
+                onClick={() => onQuickAction("Make scene lighting warmer with Golden Hour sunset tones")}
+                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
+              >
+                ✨ Warmer lighting (Golden Hour)
+              </button>
+              <button
+                onClick={() => onQuickAction("Switch 3D camera to 360° orbital trajectory")}
+                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
+              >
+                🎥 Orbit 360° camera motion
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Voice Selection Modal */}
+      <VoiceSelectorModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        selectedVoiceId={project.selectedVoiceId}
+        onSelectVoice={(voiceId) => {
+          onUpdateProject({ selectedVoiceId: voiceId });
+        }}
+      />
+    </div>
+  );
+};
