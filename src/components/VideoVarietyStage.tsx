@@ -121,7 +121,7 @@ export const VideoVarietyStage: React.FC<VideoVarietyStageProps> = ({
             </h3>
             <span className="text-[11px] font-mono text-pink-400 flex items-center gap-1.5 font-bold">
               <span className="h-2 w-2 rounded-full bg-pink-400 animate-ping" />
-              60 FPS WebGL Engine
+              AI Video Diffusion
             </span>
           </div>
 

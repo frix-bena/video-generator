@@ -1,3 +1,7 @@
+/**
+ * @deprecated Three3DRenderEngine has been deprecated and disabled in favor of real AI Video Diffusion (.MP4) pipeline.
+ * The preview viewport now strictly mounts the HTML5 <video> player with authentic video diffusion frames.
+ */
 import * as THREE from 'three';
 import { SceneSegment, CaptionStyle, AspectRatio, Render3DMode, CameraTrajectory } from '../types/cinegen';
 

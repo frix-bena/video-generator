@@ -27,5 +27,6 @@ app.listen(PORT, () => {
   console.log(`[Cinegen Backend] Server running on http://localhost:${PORT}`);
   console.log(`[Cinegen Backend] API available at http://localhost:${PORT}/api/generate-video`);
   console.log(`[Cinegen Backend] Replicate Token Configured: ${Boolean(process.env.REPLICATE_API_TOKEN)}`);
+  console.log(`[Cinegen Backend] MiniMax Key Configured: ${Boolean(process.env.MINIMAX_API_KEY)}`);
   console.log(`[Cinegen Backend] Fal.ai Key Configured: ${Boolean(process.env.FAL_KEY)}`);
 });

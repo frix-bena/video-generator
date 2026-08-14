@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium tracking-normal truncate max-w-[180px] sm:max-w-xs">
-              Autonomous 3D WebGL Film Engine
+              AI Text-to-Video Diffusion Studio
             </p>
           </div>
         </div>

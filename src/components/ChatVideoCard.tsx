@@ -5,18 +5,11 @@ import {
   Sparkles, 
   FileText, 
   Check, 
-  Film, 
-  SlidersHorizontal,
-  Layers,
-  Share2,
-  Tv,
-  Smartphone,
-  Box,
-  Volume2,
-  Image as ImageIcon
+  Volume2, 
+  Image as ImageIcon 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Project, AspectRatio } from '../types/cinegen';
+import { Project } from '../types/cinegen';
 import { VOICES_LIBRARY } from '../data/voices';
 import { audioEngine } from '../services/audioEngine';
 import { VideoPlayer } from './VideoPlayer';
@@ -32,12 +25,10 @@ interface ChatVideoCardProps {
 export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
   project,
   onUpdateProject,
-  onQuickAction,
 }) => {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const [downloadFormat, setDownloadFormat] = useState<'mp4' | 'webm'>('mp4');
 
   const selectedVoice = VOICES_LIBRARY.find((v) => v.id === project.selectedVoiceId) || VOICES_LIBRARY[0];
   const activeVideoUrl = project.videoUrl;
@@ -55,7 +46,6 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
           setIsDownloading(false);
 
           if (activeVideoUrl) {
-            // Trigger actual direct MP4 video download
             const a = document.createElement('a');
             a.href = activeVideoUrl;
             a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
@@ -64,54 +54,6 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-          } else {
-            // Trigger synthesized 3D Master WebM export
-            const canvas = document.querySelector('canvas');
-            if (canvas && typeof canvas.captureStream === 'function') {
-              try {
-                const stream = canvas.captureStream(30);
-                const recorder = new MediaRecorder(stream, {
-                  mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
-                });
-                const chunks: Blob[] = [];
-                recorder.ondataavailable = (e) => {
-                  if (e.data.size > 0) chunks.push(e.data);
-                };
-                recorder.onstop = () => {
-                  const blob = new Blob(chunks, { type: 'video/webm' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_3d_master.webm`;
-                  a.click();
-                };
-                recorder.start();
-                setTimeout(() => {
-                  try { recorder.stop(); } catch {}
-                }, 3000);
-              } catch {
-                // Fallback blob download
-                const blob = new Blob(
-                  [`Cinegen 3D Master Render\nTitle: ${project.title}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
-                  { type: 'video/webm' }
-                );
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_3d_master.webm`;
-                a.click();
-              }
-            } else {
-              const blob = new Blob(
-                [`Cinegen 3D Master Render\nTitle: ${project.title}\nVoice: ${selectedVoice.name}\nGenerated: ${new Date().toISOString()}`],
-                { type: 'video/webm' }
-              );
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.webm`;
-              a.click();
-            }
           }
 
           audioEngine.playSFX('chime');
@@ -124,9 +66,9 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
           } catch {}
           return 100;
         }
-        return prev + 20;
+        return prev + 25;
       });
-    }, 200);
+    }, 150);
   };
 
   // Subtitles SRT Download
@@ -207,7 +149,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
         </div>
       </div>
 
-      {/* Embedded High-Definition Video Player */}
+      {/* Embedded High-Definition Video Player (HTML5 Native) */}
       <div className="p-3 sm:p-4 bg-slate-950/60">
         <VideoPlayer
           project={project}
@@ -244,7 +186,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             {/* Change Voice Modal Trigger */}
             <button
               onClick={() => setIsVoiceModalOpen(true)}
-              className="btn-cine-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold hover:scale-105 transition-all"
+              className="btn-cine-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold hover:scale-105 transition-all cursor-pointer"
             >
               <Mic className="h-3.5 w-3.5 text-pink-400" />
               <span>Change Voice</span>
@@ -260,7 +202,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
               <button
                 key={v.id}
                 onClick={() => handleQuickSwapVoice(v.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                   v.id === project.selectedVoiceId
                     ? 'bg-pink-500/30 border-pink-500 text-pink-200 shadow-sm'
                     : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-pink-500/30'
@@ -281,16 +223,16 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             <button
               onClick={handleDownloadMaster}
               disabled={isDownloading}
-              className="btn-cine-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
+              className="btn-cine-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 hover:scale-[1.02] transition-all disabled:opacity-50 cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>
-                {isDownloading ? `Exporting Master (${downloadProgress}%)...` : 'Download Master Video'}
+                {isDownloading ? `Exporting Master (${downloadProgress}%)...` : 'Download Master .MP4'}
               </span>
             </button>
 
             <span className="text-[11px] font-mono text-slate-400 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-pink-500/15">
-              1080p HD • MP4/WebM
+              1080p HD • MP4 Master
             </span>
           </div>
 
@@ -299,7 +241,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             <button
               onClick={handleDownloadSRT}
               title="Download Subtitles in SRT format"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all cursor-pointer"
             >
               <FileText className="h-3.5 w-3.5 text-pink-400" />
               <span>Subtitles (.SRT)</span>
@@ -308,7 +250,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             <button
               onClick={handleDownloadScript}
               title="Download Narration Script in TXT format"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all cursor-pointer"
             >
               <Volume2 className="h-3.5 w-3.5 text-pink-400" />
               <span>Script (.TXT)</span>
@@ -317,7 +259,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             <button
               onClick={handleDownloadCover}
               title="Download High-Resolution Video Cover Page / Poster (.PNG)"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all cursor-pointer"
             >
               <ImageIcon className="h-3.5 w-3.5 text-pink-400" />
               <span>Poster (.PNG)</span>
@@ -325,22 +267,22 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
           </div>
         </div>
 
-        {/* Google Veo Technical Director Inspector */}
+        {/* Diffusion Engine Metadata Inspector */}
         <div className="rounded-xl bg-slate-950/50 border border-pink-500/15 p-3 text-xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="font-semibold text-slate-300 flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-pink-400" />
-              Veo 2 Engine Metadata
+              Diffusion Engine Parameters
             </span>
             <span className="font-mono text-[10px] bg-pink-500/10 text-pink-300 px-2 py-0.5 rounded border border-pink-500/20">
-              1080p • 60 FPS • PBR
+              1080p • 60 FPS • Photoreal
             </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
             <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Camera Path</span>
+              <span className="text-slate-400 block text-[10px]">Diffusion Model</span>
               <span className="text-slate-200 font-semibold truncate block">
-                {project.segments[0]?.camera3D?.trajectory.replace('_', ' ').toUpperCase() || 'ORBIT 360°'}
+                {project.aiModel || 'MiniMax Video-01'}
               </span>
             </div>
             <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
@@ -378,4 +320,3 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
     </div>
   );
 };
-

@@ -3,7 +3,7 @@ import { AspectRatio, Resolution } from '../types/cinegen';
 export interface VideoModelInfo {
   id: string;
   name: string;
-  provider: 'replicate' | 'fal' | 'simulation';
+  provider: 'replicate' | 'minimax' | 'fal' | 'simulation';
   description: string;
   badge: string;
   isAvailable: boolean;
@@ -14,6 +14,7 @@ export interface VideoModelInfo {
 export interface VideoModelsResponse {
   success: boolean;
   hasReplicateToken: boolean;
+  hasMiniMaxKey?: boolean;
   hasFalKey: boolean;
   defaultModel: string;
   models: VideoModelInfo[];
@@ -25,6 +26,7 @@ export interface VideoGenerationRequest {
   aspectRatio?: AspectRatio;
   duration?: number;
   resolution?: Resolution;
+  waitForCompletion?: boolean;
 }
 
 export interface VideoTaskResponse {
@@ -49,7 +51,7 @@ const API_BASE = '/api';
 
 export class VideoApiService {
   /**
-   * Fetches supported AI video models and server API key status
+   * Fetches supported AI video diffusion models and server API key status
    */
   static async getModels(): Promise<VideoModelsResponse> {
     try {
@@ -63,12 +65,13 @@ export class VideoApiService {
       return {
         success: true,
         hasReplicateToken: false,
+        hasMiniMaxKey: false,
         hasFalKey: false,
         defaultModel: 'minimax/video-01',
         models: [
           {
             id: 'minimax/video-01',
-            name: 'Minimax Video-01',
+            name: 'MiniMax Video-01',
             provider: 'replicate',
             description: 'Ultra-photorealistic cinematic motion & facial detail',
             badge: 'Recommended',
@@ -77,8 +80,18 @@ export class VideoApiService {
             supportedAspectRatios: ['16:9', '9:16', '1:1'],
           },
           {
+            id: 'kwaivgi/kling-v1.6-standard',
+            name: 'Kling Video v1.6 Standard',
+            provider: 'replicate',
+            description: 'High temporal consistency and realistic fluid dynamics',
+            badge: 'Next-Gen Kling',
+            isAvailable: true,
+            maxDuration: 5,
+            supportedAspectRatios: ['16:9', '9:16', '1:1'],
+          },
+          {
             id: 'luma/ray',
-            name: 'Luma Dream Machine',
+            name: 'Luma Dream Machine (Ray)',
             provider: 'replicate',
             description: 'High-speed camera tracking & realistic depth',
             badge: 'High Action',
@@ -87,13 +100,13 @@ export class VideoApiService {
             supportedAspectRatios: ['16:9', '9:16', '1:1'],
           },
           {
-            id: 'fal-ai/minimax-video',
-            name: 'Fal.ai Minimax',
-            provider: 'fal',
-            description: 'Serverless inference queue with high motion coherence',
-            badge: 'Fast Queue',
+            id: 'wan-video/wan-2.1-t2v-720p',
+            name: 'Wan 2.1 Diffusion (720p)',
+            provider: 'replicate',
+            description: 'Open-weights diffusion with high prompt adherence',
+            badge: 'Wan 2.1',
             isAvailable: true,
-            maxDuration: 6,
+            maxDuration: 5,
             supportedAspectRatios: ['16:9', '9:16', '1:1'],
           }
         ]
@@ -110,7 +123,10 @@ export class VideoApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify({
+        ...request,
+        waitForCompletion: request.waitForCompletion ?? true,
+      }),
     });
 
     const data = await res.json();
@@ -158,7 +174,7 @@ export class VideoApiService {
     intervalMs: number = 2000
   ): Promise<VideoTaskResponse> {
     let attempts = 0;
-    const maxAttempts = 90; // ~3 minutes max polling window
+    const maxAttempts = 120; // ~4 minutes max polling window
 
     return new Promise((resolve, reject) => {
       const interval = setInterval(async () => {
@@ -172,7 +188,7 @@ export class VideoApiService {
         attempts++;
         if (attempts > maxAttempts) {
           clearInterval(interval);
-          reject(new Error('Video generation timed out after 3 minutes.'));
+          reject(new Error('Video generation timed out.'));
           return;
         }
 
@@ -180,7 +196,7 @@ export class VideoApiService {
           const statusRes = await this.checkStatus(taskId);
           onProgress(statusRes);
 
-          if (statusRes.status === 'completed') {
+          if (statusRes.status === 'completed' && statusRes.videoUrl) {
             clearInterval(interval);
             resolve(statusRes);
           } else if (statusRes.status === 'failed') {
@@ -195,5 +211,37 @@ export class VideoApiService {
         }
       }, intervalMs);
     });
+  }
+
+  /**
+   * High-level helper: starts generation and guarantees final .mp4 video URL
+   */
+  static async generateRealisticVideo(
+    request: VideoGenerationRequest,
+    onProgress?: (status: VideoTaskResponse) => void,
+    signal?: AbortSignal
+  ): Promise<VideoTaskResponse> {
+    const initialResponse = await this.generateVideo({
+      ...request,
+      waitForCompletion: false,
+    });
+
+    if (initialResponse.status === 'completed' && initialResponse.videoUrl) {
+      onProgress?.(initialResponse);
+      return initialResponse;
+    }
+
+    if (onProgress) {
+      onProgress(initialResponse);
+    }
+
+    return await this.pollVideoUntilComplete(
+      initialResponse.taskId,
+      (status) => {
+        if (onProgress) onProgress(status);
+      },
+      signal,
+      2000
+    );
   }
 }

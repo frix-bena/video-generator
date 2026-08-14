@@ -3,12 +3,11 @@ import {
   Layers, 
   ArrowRight, 
   Tv, 
-  Sparkles,
-  Film,
-  RotateCcw,
-  Clock,
-  CheckCircle2,
-  XCircle
+  Sparkles, 
+  RotateCcw, 
+  Clock, 
+  CheckCircle2, 
+  XCircle 
 } from 'lucide-react';
 import { Project, VideoVariation } from '../types/cinegen';
 import { VideoPlayer } from './VideoPlayer';
@@ -33,7 +32,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
   const [activeSceneIdx, setActiveSceneIdx] = useState<number>(0);
   const [progressPct, setProgressPct] = useState<number>(project.renderProgress || 10);
   const [statusMessage, setStatusMessage] = useState<string>(
-    project.statusMessage || 'Initializing video diffusion pipeline...'
+    project.statusMessage || 'Generating realistic video frames...'
   );
   const [elapsedSec, setElapsedSec] = useState<number>(0);
   const [estimatedRemainingSec, setEstimatedRemainingSec] = useState<number>(35);
@@ -41,10 +40,10 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | undefined>(project.videoUrl);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([
-    'Initializing Cinegen Autonomous Video Generation Pipeline...',
-    `Target Model: ${project.aiModel || 'Minimax Video-01'}`,
+    'Initializing Cinegen AI Video Diffusion Pipeline...',
+    `Target Model: ${project.aiModel || 'MiniMax Video-01'}`,
     `Prompt: "${project.prompt.slice(0, 60)}..."`,
-    'Allocating GPU inference cluster & parsing camera trajectories...',
+    'Generating realistic video frames...',
   ]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -166,7 +165,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
                   ? 'High-Fidelity Master Video Synthesized!' 
                   : generationError 
                   ? 'Rendering Issue Encountered' 
-                  : 'Synthesizing Ultra-Photorealistic Video...'}
+                  : 'Generating realistic video frames...'}
               </h2>
               <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-mono font-bold border ${
                 isCompleted 
@@ -193,7 +192,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
           {!isCompleted && (
             <button
               onClick={handleCancelClick}
-              className="btn-cine-secondary flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold hover:border-rose-500/50 hover:text-rose-300"
+              className="btn-cine-secondary flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold hover:border-rose-500/50 hover:text-rose-300 cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Cancel</span>
@@ -202,7 +201,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
 
           <button
             onClick={onProceed}
-            className="btn-cine-primary flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold shadow-lg shadow-pink-500/30 hover:scale-[1.02] transition-transform"
+            className="btn-cine-primary flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold shadow-lg shadow-pink-500/30 hover:scale-[1.02] transition-transform cursor-pointer"
           >
             <span>{isCompleted ? 'Choose Voice & Narration' : 'Inspect Timeline & Variations'}</span>
             <ArrowRight className="h-4 w-4" />
@@ -217,17 +216,20 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="font-display text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
               <Tv className="h-4 w-4 text-pink-400" />
-              <span>{isCompleted ? 'Generated MP4 Video Player' : 'Live Rendering Preview (60 FPS)'}</span>
+              <span>{isCompleted ? 'Generated MP4 Video Player' : 'Live Diffusion Preview'}</span>
             </h3>
             <span className="text-[11px] font-mono text-pink-400 flex items-center gap-1 font-semibold">
               <span className="h-2 w-2 rounded-full bg-pink-400 animate-ping" />
-              {(currentVideoUrl || project.videoUrl) ? 'HTML5 MP4 Stream' : 'Live WebGL Pipeline'}
+              {(currentVideoUrl || project.videoUrl) ? 'HTML5 MP4 Stream' : 'Generating Frames...'}
             </span>
           </div>
 
           <VideoPlayer
             project={{ ...project, videoUrl: currentVideoUrl || project.videoUrl }}
             videoUrl={currentVideoUrl || project.videoUrl}
+            isGenerating={!isCompleted && !currentVideoUrl && !project.videoUrl}
+            generationProgress={progressPct}
+            generationMessage={statusMessage}
             currentSegmentIndex={activeSceneIdx}
             onSegmentChange={setActiveSceneIdx}
             onUpdateProject={onUpdateProject}
@@ -245,29 +247,29 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
                 <span>Diffusion Pipeline Tasks</span>
               </h4>
               <span className="text-[11px] font-mono text-pink-300 font-bold">
-                {project.aiModel || 'Minimax Video-01'}
+                {project.aiModel || 'MiniMax Video-01'}
               </span>
             </div>
 
             <div className="space-y-3">
               {[
                 { 
-                  label: 'Cinematic Prompt Deconstruction & Lens Physics', 
+                  label: 'Cinematic Prompt Conditioning & Motion Vectoring', 
                   done: progressPct >= 20, 
                   pct: Math.min(100, Math.max(0, Math.floor(progressPct * 3.5))) 
                 },
                 { 
-                  label: 'Latent Keyframe Synthesis & Optical Flow', 
+                  label: 'Latent Keyframe Diffusion & Optical Consistency', 
                   done: progressPct >= 60, 
                   pct: Math.min(100, Math.max(0, Math.floor((progressPct - 20) * 2))) 
                 },
                 { 
-                  label: 'Volumetric Lighting & Subsurface Scattering', 
+                  label: 'High-Fidelity Texture & Lighting Synthesis', 
                   done: progressPct >= 85, 
                   pct: Math.min(100, Math.max(0, Math.floor((progressPct - 50) * 2.5))) 
                 },
                 { 
-                  label: 'Temporal Super-Resolution & MP4 Mastering', 
+                  label: 'Master MP4 Video Container Finalization', 
                   done: progressPct >= 100, 
                   pct: progressPct >= 90 ? 100 : Math.max(0, Math.floor((progressPct - 75) * 4)) 
                 },
@@ -304,7 +306,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-pink-500/15 text-slate-400">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-pink-400" />
-                <span className="text-pink-300 font-semibold">CINEGEN NEURAL CONSOLE</span>
+                <span className="text-pink-300 font-semibold">CINEGEN DIFFUSION CONSOLE</span>
               </div>
               <span className="text-[10px] text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/30">
                 {isCompleted ? 'COMPLETED' : 'RENDERING'}

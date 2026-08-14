@@ -434,7 +434,7 @@ export class CoverPageService {
     // Bottom Credits Line
     ctx.font = `600 ${Math.round(height * 0.016)}px "JetBrains Mono", monospace`;
     ctx.fillStyle = '#ec4899';
-    const credits = `CINEGEN 3D STUDIO • SYNCHRONIZED NARRATION • THREE.JS 60 FPS`;
+    const credits = `CINEGEN AI STUDIO • SYNCHRONIZED NARRATION • 1080P MASTER`;
     ctx.fillText(credits, margin, height - height * 0.05);
     ctx.restore();
 

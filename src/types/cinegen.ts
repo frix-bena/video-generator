@@ -239,6 +239,7 @@ export interface CopilotMessage {
   sender: 'cinegen' | 'user';
   text: string;
   timestamp: string;
+  actions?: string[];
   actionsPerformed?: string[];
   suggestedPrompts?: string[];
 }

@@ -39,7 +39,7 @@ export const ChatInterface: React.FC = () => {
     {
       id: 'welcome-msg',
       sender: 'agent',
-      text: "👋 **Welcome! What video would you like to create today?**\n\nDescribe your concept or story idea below to generate a photorealistic cinematic video with dynamic 3D camera motion, PBR lighting, and synchronized voice narration.",
+      text: "👋 **Welcome! What video would you like to create today?**\n\nDescribe your concept or story idea below to generate a photorealistic cinematic video using real AI video diffusion with synchronized voice narration.",
       timestamp: 'Just now',
     },
   ]);
@@ -317,7 +317,7 @@ export const ChatInterface: React.FC = () => {
         generationProgress: {
           stage: 'generating',
           percent: 10,
-          message: `Initializing ${selectedModel} video generation pipeline...`,
+          message: 'Generating realistic video frames...',
         },
       },
     ]);
@@ -345,7 +345,7 @@ export const ChatInterface: React.FC = () => {
                     generationProgress: {
                       stage: statusUpdate.progress >= 90 ? 'done' : 'generating',
                       percent: statusUpdate.progress,
-                      message: statusUpdate.message || 'Rendering video frames on GPU diffusion cluster...',
+                      message: statusUpdate.message || 'Generating realistic video frames...',
                     },
                   };
                 }
@@ -381,12 +381,12 @@ export const ChatInterface: React.FC = () => {
               ...m,
               isGenerating: false,
               project: generatedProject,
-              text: `🎬 Here is your generated video: **${generatedProject.title}**!\n\nSynthesized with **${selectedModel}** into a high-definition stream with synchronized voice narration. You can play the video, scrub the timeline, switch between MP4 and 3D WebGL, customize narrator voice, or download the master video below.`,
+              text: `🎬 Here is your generated video: **${generatedProject.title}**!\n\nSynthesized with **${selectedModel}** into a high-definition .MP4 stream with synchronized voice narration. You can play the video, scrub the timeline, customize narrator voice, or download the master video below.`,
               actions: [
                 `Rendered MP4 video with ${selectedModel}`,
                 'Synchronized voiceover audio narration',
                 'Mastered audio score and subtitles',
-                'Compiled HTML5 MP4 player stream',
+                'Mounted HTML5 MP4 video player stream',
               ],
             };
           }

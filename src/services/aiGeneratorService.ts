@@ -26,10 +26,10 @@ export class AiGeneratorService {
     ];
 
     if (p.toLowerCase().includes('3d') || p.toLowerCase().includes('cinematic')) {
-      return `${p}, with photorealistic Three.js PBR shaders, dynamic volumetric lighting, 60 FPS camera motion, and broadcast-grade color LUTs`;
+      return `${p}, photorealistic AI video diffusion, dynamic cinematic camera motion, broadcast-grade color LUTs`;
     }
 
-    return `Produce an epic realistic 3D cinematic video about ${p}, ${enhancements.join(', ')}`;
+    return `Produce an epic realistic cinematic video about ${p}, ${enhancements.join(', ')}`;
   }
 
   /**
@@ -58,7 +58,7 @@ export class AiGeneratorService {
     onProgress?.({
       stage: 'variety',
       percent: 85,
-      message: 'Compiling real-time WebGL 3D candidate previews & voice sync tracks...',
+      message: 'Compiling high-definition candidate video previews & voice sync tracks...',
     });
     await new Promise((r) => setTimeout(r, 450));
 
@@ -371,7 +371,7 @@ export class AiGeneratorService {
     onProgress?.({
       stage: 'storyboard',
       percent: 65,
-      message: 'Compiling Three.js WebGL 3D scene geometry & particle systems...',
+      message: 'Generating realistic video frames...',
     });
     await new Promise((r) => setTimeout(r, 700));
 
@@ -379,7 +379,7 @@ export class AiGeneratorService {
     onProgress?.({
       stage: 'generating',
       percent: 80,
-      message: 'Rendering 60 FPS realistic 3D stream & PBR materials...',
+      message: 'Synthesizing video diffusion latent frames & temporal motion...',
       currentScene: 4,
       totalScenes: 8,
     });
@@ -845,7 +845,7 @@ export class AiGeneratorService {
           'Why Titan, Not Mars, Is Humanity’s True Next Home',
         ],
         selectedTitleIndex: 0,
-        description: `🚀 Step into 2184 in realistic 3D WebGL detail as humanity establishes its first permanent civilization on Titan, Saturn’s giant hydrocarbon moon.
+        description: `🚀 Step into 2184 in realistic cinematic detail as humanity establishes its first permanent civilization on Titan, Saturn’s giant hydrocarbon moon.
 
 📌 CHAPTERS:
 00:00 - Descent into the Golden Haze (3D Saturn Orbit)
