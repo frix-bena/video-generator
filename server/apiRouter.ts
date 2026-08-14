@@ -26,15 +26,6 @@ export interface VideoGenerationTask {
 // In-memory storage for active and completed video tasks
 const tasksStore = new Map<string, VideoGenerationTask>();
 
-// High-quality cinematic fallback sample video URLs for preview/demo when no live API key is set
-const SAMPLE_PREVIEW_VIDEOS = [
-  'https://assets.mixkit.co/videos/preview/mixkit-coffee-beans-falling-in-slow-motion-42686-large.mp4',
-  'https://assets.mixkit.co/videos/preview/mixkit-steaming-cup-of-coffee-41584-large.mp4',
-  'https://assets.mixkit.co/videos/preview/mixkit-hands-holding-a-cup-of-hot-coffee-41583-large.mp4',
-  'https://assets.mixkit.co/videos/preview/mixkit-top-view-of-a-cup-of-coffee-with-foam-41586-large.mp4',
-  'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-with-flying-cars-at-night-41595-large.mp4',
-  'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4',
-];
 
 export const createApiRouter = (): Router => {
   const router = express.Router();

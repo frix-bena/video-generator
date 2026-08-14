@@ -333,6 +333,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    console.warn('[VideoPlayer] Video element error, switching to 3D WebGL render engine:', e);
+    setIsVideoLoading(false);
+    setSourceMode('3d');
+  };
+
   const handleVideoTimeUpdate = () => {
     if (videoRef.current && sourceMode === 'video') {
       const cur = videoRef.current.currentTime;
@@ -343,6 +349,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
         const dur = videoRef.current.duration || 1;
         setVideoBuffered((bufferedEnd / dur) * 100);
+      }
+
+      // Sync voiceover speech when crossing scene boundaries during video playback
+      if (isPlaying && currentSegment && currentSegment.id !== lastSpokenSegmentIdRef.current && !isMuted) {
+        lastSpokenSegmentIdRef.current = currentSegment.id;
+        audioEngine.speakNarration(currentSegment.narration, selectedVoice);
       }
 
       // Draw 2D overlays on top of video
@@ -360,6 +372,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
     }
+    audioEngine.stopSpeaking();
+    audioEngine.stopMusic();
+    lastSpokenSegmentIdRef.current = null;
   };
 
   // Play / Pause handler
@@ -367,12 +382,30 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (sourceMode === 'video' && videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
+        audioEngine.stopSpeaking();
+        audioEngine.stopMusic();
         setIsPlaying(false);
       } else {
         videoRef.current.play().then(() => {
           setIsPlaying(true);
+          if (!isMuted) {
+            audioEngine.setMute(false);
+            audioEngine.startMusic(project.musicStyle || 'cinematic');
+            if (currentSegment) {
+              lastSpokenSegmentIdRef.current = currentSegment.id;
+              audioEngine.speakNarration(currentSegment.narration, selectedVoice);
+            }
+          }
         }).catch((err) => {
-          console.warn('Video play error:', err);
+          console.warn('Video play error, falling back to 3D mode:', err);
+          setSourceMode('3d');
+          setIsPlaying(true);
+          if (!isMuted) {
+            audioEngine.startMusic(project.musicStyle || 'cinematic');
+            if (currentSegment) {
+              audioEngine.speakNarration(currentSegment.narration, selectedVoice);
+            }
+          }
         });
       }
       return;
@@ -383,6 +416,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       audioEngine.setMute(isMuted);
       audioEngine.startMusic(project.musicStyle || 'cinematic');
       if (currentSegment) {
+        lastSpokenSegmentIdRef.current = currentSegment.id;
         audioEngine.speakNarration(currentSegment.narration, selectedVoice);
       }
       setIsPlaying(true);
@@ -398,16 +432,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const clamped = Math.max(0, Math.min(time, totalDuration));
     setGlobalTime(clamped);
 
+    audioEngine.stopSpeaking();
+    lastSpokenSegmentIdRef.current = null;
+
     if (sourceMode === 'video' && videoRef.current) {
       videoRef.current.currentTime = clamped;
-    } else {
-      audioEngine.stopSpeaking();
-      lastSpokenSegmentIdRef.current = null;
-      if (isPlaying) {
-        const targetSeg = segments.find((s) => clamped >= s.startTime && clamped < s.endTime);
-        if (targetSeg) {
-          audioEngine.speakNarration(targetSeg.narration, selectedVoice);
-        }
+    }
+
+    if (isPlaying && !isMuted) {
+      const targetSeg = segments.find((s) => clamped >= s.startTime && clamped < s.endTime);
+      if (targetSeg) {
+        lastSpokenSegmentIdRef.current = targetSeg.id;
+        audioEngine.speakNarration(targetSeg.narration, selectedVoice);
       }
     }
   };
@@ -557,11 +593,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             ref={videoRef}
             src={activeVideoUrl}
             playsInline
-            crossOrigin="anonymous"
             loop={false}
             onLoadedMetadata={handleVideoLoadedMetadata}
             onTimeUpdate={handleVideoTimeUpdate}
             onEnded={handleVideoEnded}
+            onError={handleVideoError}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsVideoLoading(true)}

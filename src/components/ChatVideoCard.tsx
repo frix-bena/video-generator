@@ -341,46 +341,6 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
           </div>
         </div>
 
-        {/* Quick Follow-up Directives Prompt Chips */}
-        {onQuickAction && (
-          <div className="pt-2 border-t border-pink-500/15">
-            <span className="text-[11px] font-semibold text-slate-400 block mb-2">
-              Direct the AI Agent (or type your instruction in chat):
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => onQuickAction(project.aspectRatio === '9:16' ? "Convert format to 16:9 Widescreen" : "Convert format to 9:16 Vertical for TikTok and Shorts")}
-                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
-              >
-                📱 {project.aspectRatio === '9:16' ? 'Convert to 16:9 Widescreen' : 'Convert to 9:16 Vertical'}
-              </button>
-              <button
-                onClick={() => onQuickAction("Switch camera motion to 360° orbital trajectory")}
-                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
-              >
-                🎥 360° Orbit Camera
-              </button>
-              <button
-                onClick={() => onQuickAction("Make scene lighting warmer with Golden Hour sunset tones")}
-                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
-              >
-                🌅 Golden Hour Sunset
-              </button>
-              <button
-                onClick={() => onQuickAction("Switch camera to high-speed FPV aerial drone flythrough")}
-                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
-              >
-                🚁 FPV Drone Flythrough
-              </button>
-              <button
-                onClick={() => onQuickAction("Change narrator voice to Sir Arthur (British Documentary)")}
-                className="px-3 py-1 text-xs rounded-full bg-slate-950/80 hover:bg-pink-950/60 border border-pink-500/20 hover:border-pink-500/40 text-slate-300 hover:text-pink-200 transition-all flex items-center gap-1.5"
-              >
-                🎙️ Voice: Sir Arthur
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Voice Selection Modal */}

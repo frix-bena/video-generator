@@ -1511,11 +1511,29 @@ Produced autonomously by Cinegen 3D AI Video Studio.
       };
     });
 
+    let matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-steaming-cup-of-coffee-41584-large.mp4';
+    if (pLower.includes('snow') || pLower.includes('leopard') || pLower.includes('tiger') || pLower.includes('cat') || pLower.includes('animal') || pLower.includes('wildlife')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-wild-tiger-walking-in-nature-41585-large.mp4';
+    } else if (pLower.includes('city') || pLower.includes('cyberpunk') || pLower.includes('tokyo') || pLower.includes('future') || pLower.includes('neon') || pLower.includes('street')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-with-flying-cars-at-night-41595-large.mp4';
+    } else if (pLower.includes('ocean') || pLower.includes('sea') || pLower.includes('water') || pLower.includes('underwater') || pLower.includes('deep') || pLower.includes('wave')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-waves-coming-to-the-beach-5016-large.mp4';
+    } else if (pLower.includes('desert') || pLower.includes('canyon') || pLower.includes('mountain') || pLower.includes('drone') || pLower.includes('fpv') || pLower.includes('sunset') || pLower.includes('aerial')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-sunset-over-the-mountains-41601-large.mp4';
+    } else if (pLower.includes('space') || pLower.includes('titan') || pLower.includes('star') || pLower.includes('galaxy') || pLower.includes('cosmos') || pLower.includes('mars') || pLower.includes('planet')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4';
+    } else if (pLower.includes('woman') || pLower.includes('girl') || pLower.includes('person') || pLower.includes('man') || pLower.includes('portrait')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-woman-walking-on-the-beach-at-sunset-1198-large.mp4';
+    } else if (pLower.includes('coffee') || pLower.includes('cafe') || pLower.includes('espresso')) {
+      matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-coffee-beans-falling-in-slow-motion-42686-large.mp4';
+    }
+
     return {
       ...COFFEE_PROJECT,
       id: `proj-veo-${Date.now()}`,
       title: projectTitle,
       prompt,
+      videoUrl: matchedVideoUrl,
       logline: `A captivating 6-minute Google Veo realistic cinematic 3D odyssey exploring the depths, beauty, and monumental scale of ${prompt}.`,
       tone,
       colorGrade,
