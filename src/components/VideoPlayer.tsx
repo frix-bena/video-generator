@@ -64,7 +64,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [videoBuffered, setVideoBuffered] = useState<number>(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [volume, setVolume] = useState<number>(1);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(autoPlay);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(project?.aspectRatio || '16:9');
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(project?.captionStyle || 'documentary');
@@ -74,7 +74,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [recordProgress, setRecordProgress] = useState<number>(0);
   const [isVideoLoading, setIsVideoLoading] = useState<boolean>(false);
   const [isCaptionMenuOpen, setIsCaptionMenuOpen] = useState<boolean>(false);
-  const [showCoverPage, setShowCoverPage] = useState<boolean>(!autoPlay);
+  const [showCoverPage, setShowCoverPage] = useState<boolean>(false);
 
   // Automatically update state to 'mp4' the moment videoUrl becomes available from the backend API
   useEffect(() => {
@@ -82,6 +82,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setViewMode('mp4');
     }
   }, [activeVideoUrl]);
+
+  // Keep HTML5 video volume and muted state in sync with ref
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      videoRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [isMuted, volume]);
+
+  // Programmatic autoplay handling for modern browsers
+  useEffect(() => {
+    if (autoPlay && videoRef.current && viewMode === 'mp4') {
+      videoRef.current.play().catch((err) => {
+        console.warn('[VideoPlayer] Programmatic autoplay notice:', err);
+      });
+    }
+  }, [activeVideoUrl, autoPlay, viewMode]);
 
   const totalDuration = viewMode === 'mp4' && videoDuration > 0 ? videoDuration : (project?.targetDurationSec || 360);
   const segments = project?.segments || [];
@@ -396,11 +413,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const handleStartPlaybackFromCover = useCallback(() => {
     setShowCoverPage(false);
     if (viewMode === 'mp4' && videoRef.current) {
-      videoRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch((err) => {
-        console.warn('[VideoPlayer] Video play promise notice:', err);
-      });
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch((err) => {
+          console.warn('[VideoPlayer] Video play promise notice:', err);
+        });
+      }
       return;
     }
 
@@ -419,20 +436,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Play / Pause handler
   const handleTogglePlay = useCallback(() => {
     if (showCoverPage) {
-      handleStartPlaybackFromCover();
-      return;
+      setShowCoverPage(false);
     }
 
     if (viewMode === 'mp4' && videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        videoRef.current.play().then(() => {
-          setIsPlaying(true);
-        }).catch((err) => {
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch((err) => {
           console.warn('[VideoPlayer] Video play promise notice:', err);
         });
+      } else {
+        videoRef.current.pause();
       }
       return;
     }
@@ -453,7 +466,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       audioEngine.stopMusic();
       setIsPlaying(false);
     }
-  }, [showCoverPage, handleStartPlaybackFromCover, viewMode, isPlaying, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
+  }, [showCoverPage, viewMode, isPlaying, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -660,9 +673,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             src={activeVideoUrl}
             poster={CoverPageService.getCoverImageUrl(project)}
             preload="auto"
-            autoPlay={autoPlay || isPlaying}
+            autoPlay={autoPlay}
+            muted={isMuted}
             loop
-            controls={!showCoverPage}
             playsInline
             onLoadedMetadata={handleVideoLoadedMetadata}
             onTimeUpdate={handleVideoTimeUpdate}
@@ -672,7 +685,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsVideoLoading(true)}
             onPlaying={() => setIsVideoLoading(false)}
-            onClick={!showCoverPage ? handleTogglePlay : undefined}
+            onClick={handleTogglePlay}
             className="w-full h-full object-cover rounded-lg cursor-pointer"
           />
         )}
