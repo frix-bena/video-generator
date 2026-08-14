@@ -17,7 +17,9 @@ import {
   Box,
   Sparkles,
   ExternalLink,
-  Image as ImageIcon
+  Image as ImageIcon,
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import { Project, SceneSegment, AspectRatio, CaptionStyle, Render3DMode } from '../types/cinegen';
 import { Three3DRenderEngine } from '../services/three3dRenderEngine';
@@ -53,10 +55,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // 1. Determine active video URL (from direct prop, project, or selected variation)
   const activeVariation = project?.variations?.find((v) => v.id === project?.selectedVariationId);
-  const activeVideoUrl = propVideoUrl || project?.videoUrl || activeVariation?.videoUrl || null;
+  const videoUrl = propVideoUrl || project?.videoUrl || activeVariation?.videoUrl || null;
+  const activeVideoUrl = videoUrl;
+
+  // SOURCE VALIDATION & LOGGING (Requirement 1)
+  console.log("Current Video URL:", videoUrl);
+
+  const isImageUrl = (url?: string | null): boolean => {
+    if (!url) return false;
+    if (url.startsWith('data:image/')) return true;
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)$/i.test(cleanUrl);
+  };
+
+  const isValidVideoUrl = Boolean(videoUrl && !isImageUrl(videoUrl));
 
   // 2. State variable managing view mode: 'mp4' (HTML5 Video) or 'webgl' (Three.js 3D Canvas)
-  const [viewMode, setViewMode] = useState<'mp4' | 'webgl'>(activeVideoUrl ? 'mp4' : 'webgl');
+  const [viewMode, setViewMode] = useState<'mp4' | 'webgl'>(isValidVideoUrl ? 'mp4' : 'webgl');
+  const [videoPlaybackError, setVideoPlaybackError] = useState<string | null>(null);
 
   const [isPlaying, setIsPlaying] = useState<boolean>(autoPlay);
   const [globalTime, setGlobalTime] = useState<number>(0);
@@ -78,10 +94,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Automatically update state to 'mp4' the moment videoUrl becomes available from the backend API
   useEffect(() => {
-    if (activeVideoUrl) {
+    if (videoUrl && !isImageUrl(videoUrl)) {
       setViewMode('mp4');
+      setVideoPlaybackError(null);
     }
-  }, [activeVideoUrl]);
+  }, [videoUrl]);
 
   // Keep HTML5 video volume and muted state in sync with ref
   useEffect(() => {
@@ -95,10 +112,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     if (autoPlay && videoRef.current && viewMode === 'mp4') {
       videoRef.current.play().catch((err) => {
-        console.warn('[VideoPlayer] Programmatic autoplay notice:', err);
+        console.error("Playback failed to trigger:", err);
       });
     }
-  }, [activeVideoUrl, autoPlay, viewMode]);
+  }, [videoUrl, autoPlay, viewMode]);
 
   const totalDuration = viewMode === 'mp4' && videoDuration > 0 ? videoDuration : (project?.targetDurationSec || 360);
   const segments = project?.segments || [];
@@ -365,15 +382,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // HTML5 Video Event Handlers
   const handleVideoLoadedMetadata = () => {
     if (videoRef.current) {
-      setVideoDuration(videoRef.current.duration || project?.targetDurationSec || 6);
+      const dur = videoRef.current.duration;
+      if (dur && !isNaN(dur) && dur > 0) {
+        setVideoDuration(dur);
+      } else if (project?.targetDurationSec) {
+        setVideoDuration(project.targetDurationSec);
+      }
       videoRef.current.playbackRate = playbackSpeed;
       videoRef.current.volume = isMuted ? 0 : volume;
       setIsVideoLoading(false);
+      setVideoPlaybackError(null);
     }
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.warn('[VideoPlayer] HTML5 Video playback notice:', e);
+    console.error("Video Playback Error:", e.currentTarget.error);
+    const mediaErr = e.currentTarget.error;
+    const msg = mediaErr?.message ? `Video Error (${mediaErr.code}): ${mediaErr.message}` : "Error: Invalid video stream URL";
+    setVideoPlaybackError(msg);
     setIsVideoLoading(false);
   };
 
@@ -410,13 +436,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   // Start playback directly from Cover Page
-  const handleStartPlaybackFromCover = useCallback(() => {
+  const handleStartPlaybackFromCover = useCallback(async () => {
     setShowCoverPage(false);
     if (viewMode === 'mp4' && videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch((err) => {
-          console.warn('[VideoPlayer] Video play promise notice:', err);
-        });
+      try {
+        if (videoRef.current.paused) {
+          await videoRef.current.play();
+        }
+      } catch (err) {
+        console.error("Playback failed to trigger:", err);
       }
       return;
     }
@@ -433,19 +461,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsPlaying(true);
   }, [viewMode, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
 
-  // Play / Pause handler
-  const handleTogglePlay = useCallback(() => {
+  // Media Error Handling & Play / Pause handler (Requirement 2 & 4)
+  const handlePlay = useCallback(async () => {
     if (showCoverPage) {
       setShowCoverPage(false);
     }
 
-    if (viewMode === 'mp4' && videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch((err) => {
-          console.warn('[VideoPlayer] Video play promise notice:', err);
-        });
-      } else {
-        videoRef.current.pause();
+    if (viewMode === 'mp4') {
+      if (!videoRef.current) return;
+      try {
+        if (videoRef.current.paused) {
+          await videoRef.current.play();
+        } else {
+          videoRef.current.pause();
+        }
+      } catch (err) {
+        console.error("Playback failed to trigger:", err);
       }
       return;
     }
@@ -467,6 +498,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setIsPlaying(false);
     }
   }, [showCoverPage, viewMode, isPlaying, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
+
+  const handleTogglePlay = handlePlay;
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -665,27 +698,37 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Video / 3D Canvas Visual Container */}
       <div className="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
         
-        {/* Layer 1A: HTML5 <video> Element (Active when in 'mp4' mode AND videoUrl exists) */}
-        {viewMode === 'mp4' && activeVideoUrl && (
+        {/* Layer 1A: HTML5 <video> Element (Active when in 'mp4' mode AND valid videoUrl exists) */}
+        {viewMode === 'mp4' && videoUrl && !isImageUrl(videoUrl) && (
           <video
             ref={videoRef}
-            key={activeVideoUrl}
-            src={activeVideoUrl}
+            key={videoUrl}
+            src={videoUrl}
             poster={CoverPageService.getCoverImageUrl(project)}
             preload="auto"
             autoPlay={autoPlay}
             muted={isMuted}
             loop
             playsInline
+            crossOrigin="anonymous"
             onLoadedMetadata={handleVideoLoadedMetadata}
+            onDurationChange={handleVideoLoadedMetadata}
+            onCanPlay={() => setIsVideoLoading(false)}
             onTimeUpdate={handleVideoTimeUpdate}
             onEnded={handleVideoEnded}
-            onError={handleVideoError}
+            onError={(e) => {
+              console.error("Video Playback Error:", e.currentTarget.error);
+              setVideoPlaybackError("Error: Invalid video stream URL");
+              setIsVideoLoading(false);
+            }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsVideoLoading(true)}
-            onPlaying={() => setIsVideoLoading(false)}
-            onClick={handleTogglePlay}
+            onPlaying={() => {
+              setIsVideoLoading(false);
+              setVideoPlaybackError(null);
+            }}
+            onClick={handlePlay}
             className="w-full h-full object-cover rounded-lg cursor-pointer"
           />
         )}
@@ -697,19 +740,52 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             width={1280}
             height={720}
             className={`h-full w-full object-contain ${isInteractive3D ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
-            onClick={!isInteractive3D && !showCoverPage ? handleTogglePlay : undefined}
+            onClick={!isInteractive3D && !showCoverPage ? handlePlay : undefined}
           />
         )}
 
+        {/* Explicit UI Alert / Banner for Missing, Invalid, or Image Stream URL */}
+        {viewMode === 'mp4' && (!videoUrl || isImageUrl(videoUrl) || videoPlaybackError) && (
+          <div className="absolute inset-x-4 top-14 sm:inset-x-8 z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl bg-rose-950/95 border border-rose-500/80 p-4 text-rose-200 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-400 shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-rose-100 uppercase tracking-wide">
+                  Error: Invalid video stream URL
+                </p>
+                <p className="text-xs text-rose-300/90 mt-0.5">
+                  {!videoUrl 
+                    ? 'No video stream URL provided for HTML5 playback.' 
+                    : isImageUrl(videoUrl)
+                    ? `Provided URL is a static image format (${videoUrl.split('.').pop()?.split('?')[0] || 'image'}), not a playable .mp4 stream.`
+                    : videoPlaybackError || 'The video format could not be decoded or loaded by the browser.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setVideoPlaybackError(null);
+                setViewMode('webgl');
+              }}
+              className="shrink-0 rounded-lg bg-rose-600 hover:bg-rose-500 px-3.5 py-1.5 text-xs font-bold text-white transition-colors shadow-md shadow-rose-950 cursor-pointer"
+            >
+              Switch to 3D WebGL
+            </button>
+          </div>
+        )}
+
         {/* Fallback if user toggles to MP4 mode but video is still generating */}
-        {viewMode === 'mp4' && !activeVideoUrl && (
+        {viewMode === 'mp4' && !videoUrl && !videoPlaybackError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-center p-6 space-y-3 z-10">
             <div className="h-10 w-10 rounded-full border-2 border-pink-500 border-t-transparent animate-spin" />
             <p className="text-sm font-bold text-white">Synthesizing High-Resolution MP4 Stream...</p>
             <p className="text-xs text-slate-400">View the real-time 3D WebGL engine while your video renders.</p>
             <button
               onClick={() => setViewMode('webgl')}
-              className="btn-cine-primary text-xs px-4 py-1.5 rounded-xl font-bold"
+              className="btn-cine-primary text-xs px-4 py-1.5 rounded-xl font-bold cursor-pointer"
             >
               View 3D WebGL Engine
             </button>
@@ -744,7 +820,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         {/* Top-Left: Mode & Model Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-2 z-20 pointer-events-auto">
-          {viewMode === 'mp4' && activeVideoUrl ? (
+          {viewMode === 'mp4' && videoUrl && !isImageUrl(videoUrl) ? (
             <div className="flex items-center gap-1.5 rounded-lg bg-black/80 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-emerald-300 border border-emerald-500/40 shadow-lg">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>AI VIDEO (.MP4) • HIGH FIDELITY</span>
@@ -771,19 +847,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (activeVideoUrl) {
+                if (videoUrl) {
                   setViewMode('mp4');
                 }
               }}
-              disabled={!activeVideoUrl}
+              disabled={!videoUrl}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                 viewMode === 'mp4'
                   ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm font-bold'
-                  : activeVideoUrl
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : videoUrl
+                  ? 'text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer'
                   : 'text-slate-600 opacity-40 cursor-not-allowed'
               }`}
-              title={activeVideoUrl ? 'View AI Generated .MP4 Video' : 'AI Video (.MP4) is still generating or unavailable'}
+              title={videoUrl ? 'View AI Generated .MP4 Video' : 'AI Video (.MP4) is still generating or unavailable'}
             >
               <Film className="h-3 w-3" />
               <span>AI Video (.MP4)</span>
@@ -791,7 +867,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('webgl')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'webgl'
                   ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -808,7 +884,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button
               type="button"
               onClick={() => setIsInteractive3D(!isInteractive3D)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold backdrop-blur-md border transition-all duration-200 ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold backdrop-blur-md border transition-all duration-200 cursor-pointer ${
                 isInteractive3D
                   ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-400 shadow-lg shadow-pink-500/30 font-bold'
                   : 'bg-black/80 hover:bg-slate-900 text-slate-200 border-pink-500/20'
@@ -838,12 +914,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Center Play Button Overlay when paused and cover is hidden */}
         {!isPlaying && !showCoverPage && !isInteractive3D && !isVideoLoading && (
           <div 
-            onClick={handleTogglePlay}
+            onClick={handlePlay}
             className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[2px] cursor-pointer transition-opacity z-20 group-hover/player:bg-black/25"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-2xl shadow-pink-500/50 hover:scale-110 transition-transform duration-200 ring-4 ring-pink-500/20">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePlay();
+              }}
+              aria-label="Play video"
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-2xl shadow-pink-500/50 hover:scale-110 transition-transform duration-200 ring-4 ring-pink-500/20 cursor-pointer pointer-events-auto"
+            >
               <Play className="h-9 w-9 translate-x-0.5 fill-white" />
-            </div>
+            </button>
           </div>
         )}
 
@@ -957,8 +1041,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               type="button"
-              onClick={handleTogglePlay}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 hover:from-rose-500 hover:to-pink-600 text-white shadow-md shadow-pink-500/30 transition-transform active:scale-95"
+              onClick={handlePlay}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 hover:from-rose-500 hover:to-pink-600 text-white shadow-md shadow-pink-500/30 transition-transform active:scale-95 cursor-pointer"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause className="h-4 w-4 fill-white" /> : <Play className="h-4 w-4 translate-x-0.5 fill-white" />}
