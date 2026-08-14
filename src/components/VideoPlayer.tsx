@@ -464,17 +464,30 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   // Export / Download generated video
-  const handleExportOrDownload = () => {
+  const handleExportOrDownload = async () => {
     // If MP4 video is available, download directly!
     if (activeVideoUrl) {
-      const a = document.createElement('a');
-      a.href = activeVideoUrl;
-      a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      try {
+        const response = await fetch(activeVideoUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        const a = document.createElement('a');
+        a.href = activeVideoUrl;
+        a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
       audioEngine.playSFX('chime');
       return;
     }
@@ -544,10 +557,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             ref={videoRef}
             src={activeVideoUrl}
             playsInline
+            crossOrigin="anonymous"
             loop={false}
             onLoadedMetadata={handleVideoLoadedMetadata}
             onTimeUpdate={handleVideoTimeUpdate}
             onEnded={handleVideoEnded}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsVideoLoading(true)}
             onPlaying={() => setIsVideoLoading(false)}
             onClick={handleTogglePlay}

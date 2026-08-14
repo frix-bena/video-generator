@@ -20,6 +20,7 @@ export const COFFEE_PROJECT: Project = {
     'Historical Scholar': 'voice-gideon',
   },
   is3D: true,
+  videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-steaming-cup-of-coffee-41584-large.mp4',
   render3DMode: 'cinematic_pbr',
   cameraMode: 'directed',
   renderProgress: 100,

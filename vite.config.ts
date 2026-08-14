@@ -10,6 +10,8 @@ function expressApiPlugin(): Plugin {
     configureServer(server) {
       const apiApp = express();
       apiApp.use(cors());
+      apiApp.use(express.json());
+      apiApp.use(express.urlencoded({ extended: true }));
       apiApp.use(createApiRouter());
 
       server.middlewares.use((req, res, next) => {
