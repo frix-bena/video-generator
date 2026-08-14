@@ -347,21 +347,29 @@ export const createApiRouter = (): Router => {
       // 3. SIMULATION / STANDALONE HIGH-FIDELITY MODE WITH DYNAMIC TOPIC MATCHING
       const lp = cleanPrompt.toLowerCase();
       let selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-steaming-cup-of-coffee-41584-large.mp4';
+      let selectedThumbnail = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80';
 
       if (lp.includes('snow') || lp.includes('leopard') || lp.includes('wildlife') || lp.includes('animal') || lp.includes('cat') || lp.includes('tiger') || lp.includes('himalayan')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-wild-tiger-walking-in-nature-41585-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1561731216-c3a4d99437d5?auto=format&fit=crop&w=1600&q=80';
       } else if (lp.includes('city') || lp.includes('cyberpunk') || lp.includes('neo-tokyo') || lp.includes('future') || lp.includes('neon') || lp.includes('tokyo')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-with-flying-cars-at-night-41595-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1600&q=80';
       } else if (lp.includes('ocean') || lp.includes('sea') || lp.includes('deep') || lp.includes('water') || lp.includes('underwater') || lp.includes('marine') || lp.includes('beach')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-waves-coming-to-the-beach-5016-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1682687220063-4742bd7fd538?auto=format&fit=crop&w=1600&q=80';
       } else if (lp.includes('desert') || lp.includes('canyon') || lp.includes('drone') || lp.includes('fpv') || lp.includes('mountain') || lp.includes('aerial')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-sunset-over-the-mountains-41601-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80';
       } else if (lp.includes('space') || lp.includes('titan') || lp.includes('star') || lp.includes('galaxy') || lp.includes('cosmos') || lp.includes('mars') || lp.includes('planet')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80';
       } else if (lp.includes('woman') || lp.includes('portrait') || lp.includes('person') || lp.includes('girl') || lp.includes('rain') || lp.includes('window') || lp.includes('man')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-woman-walking-on-the-beach-at-sunset-1198-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1600&q=80';
       } else if (lp.includes('coffee') || lp.includes('cafe') || lp.includes('drink') || lp.includes('cup') || lp.includes('barista')) {
         selectedSampleVideo = 'https://assets.mixkit.co/videos/preview/mixkit-coffee-beans-falling-in-slow-motion-42686-large.mp4';
+        selectedThumbnail = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80';
       }
 
       const task: VideoGenerationTask = {
@@ -375,6 +383,7 @@ export const createApiRouter = (): Router => {
         progress: 15,
         message: 'Deconstructing prompt into cinematic camera motion...',
         videoUrl: selectedSampleVideo,
+        thumbnailUrl: selectedThumbnail,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

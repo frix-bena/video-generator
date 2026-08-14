@@ -16,12 +16,15 @@ import {
   Film,
   Box,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Project, SceneSegment, AspectRatio, CaptionStyle, Render3DMode } from '../types/cinegen';
 import { Three3DRenderEngine } from '../services/three3dRenderEngine';
 import { audioEngine } from '../services/audioEngine';
 import { VOICES_LIBRARY } from '../data/voices';
+import { VideoCoverPage } from './VideoCoverPage';
+import { CoverPageService } from '../services/coverPageService';
 
 export interface VideoPlayerProps {
   project?: Project;
@@ -71,6 +74,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [recordProgress, setRecordProgress] = useState<number>(0);
   const [isVideoLoading, setIsVideoLoading] = useState<boolean>(false);
   const [isCaptionMenuOpen, setIsCaptionMenuOpen] = useState<boolean>(false);
+  const [showCoverPage, setShowCoverPage] = useState<boolean>(!autoPlay);
 
   // Automatically update state to 'mp4' the moment videoUrl becomes available from the backend API
   useEffect(() => {
@@ -388,8 +392,37 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     lastSpokenSegmentIdRef.current = null;
   };
 
+  // Start playback directly from Cover Page
+  const handleStartPlaybackFromCover = useCallback(() => {
+    setShowCoverPage(false);
+    if (viewMode === 'mp4' && videoRef.current) {
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.warn('[VideoPlayer] Video play promise notice:', err);
+      });
+      return;
+    }
+
+    // 3D WebGL Mode
+    audioEngine.setMute(isMuted);
+    if (project?.musicStyle) {
+      audioEngine.startMusic(project.musicStyle);
+    }
+    if (currentSegment) {
+      lastSpokenSegmentIdRef.current = currentSegment.id;
+      audioEngine.speakNarration(currentSegment.narration, selectedVoice);
+    }
+    setIsPlaying(true);
+  }, [viewMode, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
+
   // Play / Pause handler
   const handleTogglePlay = useCallback(() => {
+    if (showCoverPage) {
+      handleStartPlaybackFromCover();
+      return;
+    }
+
     if (viewMode === 'mp4' && videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
@@ -420,7 +453,44 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       audioEngine.stopMusic();
       setIsPlaying(false);
     }
-  }, [viewMode, isPlaying, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
+  }, [showCoverPage, handleStartPlaybackFromCover, viewMode, isPlaying, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
+
+  // Keyboard navigation shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (showCoverPage) {
+          handleStartPlaybackFromCover();
+        } else {
+          handleTogglePlay();
+        }
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        handleSeek(globalTime - 5);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        handleSeek(globalTime + 5);
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        handleToggleMute();
+      } else if (e.code === 'KeyF') {
+        e.preventDefault();
+        handleToggleFullscreen();
+      } else if (e.code === 'KeyC') {
+        e.preventDefault();
+        setShowCoverPage((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCoverPage, handleStartPlaybackFromCover, handleTogglePlay, globalTime]);
 
   // Jump to specific timestamp
   const handleSeek = (time: number) => {
@@ -588,9 +658,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             ref={videoRef}
             key={activeVideoUrl}
             src={activeVideoUrl}
+            poster={CoverPageService.getCoverImageUrl(project)}
+            preload="auto"
             autoPlay={autoPlay || isPlaying}
             loop
-            controls
+            controls={!showCoverPage}
             playsInline
             onLoadedMetadata={handleVideoLoadedMetadata}
             onTimeUpdate={handleVideoTimeUpdate}
@@ -600,7 +672,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsVideoLoading(true)}
             onPlaying={() => setIsVideoLoading(false)}
-            className="w-full h-full object-cover rounded-lg"
+            onClick={!showCoverPage ? handleTogglePlay : undefined}
+            className="w-full h-full object-cover rounded-lg cursor-pointer"
           />
         )}
 
@@ -611,7 +684,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             width={1280}
             height={720}
             className={`h-full w-full object-contain ${isInteractive3D ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
-            onClick={!isInteractive3D ? handleTogglePlay : undefined}
+            onClick={!isInteractive3D && !showCoverPage ? handleTogglePlay : undefined}
           />
         )}
 
@@ -637,6 +710,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             width={1280}
             height={720}
             className="absolute inset-0 h-full w-full object-contain pointer-events-none z-15"
+          />
+        )}
+
+        {/* Layer 3: Thematic Interactive Video Cover Page (Active when showCoverPage is true) */}
+        {showCoverPage && (
+          <VideoCoverPage
+            project={project}
+            onPlay={handleStartPlaybackFromCover}
+            onUpdateProject={onUpdateProject}
           />
         )}
 
@@ -740,8 +822,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
 
-        {/* Center Play Button Overlay for 3D WebGL Canvas */}
-        {viewMode === 'webgl' && !isPlaying && !isInteractive3D && (
+        {/* Center Play Button Overlay when paused and cover is hidden */}
+        {!isPlaying && !showCoverPage && !isInteractive3D && !isVideoLoading && (
           <div 
             onClick={handleTogglePlay}
             className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[2px] cursor-pointer transition-opacity z-20 group-hover/player:bg-black/25"
@@ -1013,12 +1095,27 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
             </div>
 
+            {/* Cover Page Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowCoverPage((prev) => !prev)}
+              className={`flex items-center gap-1 rounded-xl border px-2.5 py-1 text-xs transition-all duration-200 ${
+                showCoverPage 
+                  ? 'bg-pink-500/30 border-pink-500 text-pink-200 shadow-sm shadow-pink-500/20 font-bold' 
+                  : 'bg-slate-800 border-pink-500/20 text-slate-200 hover:bg-slate-700 hover:text-white'
+              }`}
+              title={showCoverPage ? 'Hide Cover & Return to Video Playback (Press C)' : 'View Thematic Cover Page / Poster (Press C)'}
+            >
+              <ImageIcon className="h-3.5 w-3.5 text-pink-400" />
+              <span className="text-[11px] font-semibold hidden sm:inline">{showCoverPage ? 'Video' : 'Cover'}</span>
+            </button>
+
             {/* Fullscreen */}
             <button
               type="button"
               onClick={handleToggleFullscreen}
               className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              title="Toggle Fullscreen"
+              title="Toggle Fullscreen (Press F)"
             >
               {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             </button>

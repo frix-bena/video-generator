@@ -12,7 +12,8 @@ import {
   Tv,
   Smartphone,
   Box,
-  Volume2
+  Volume2,
+  Image as ImageIcon
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Project, AspectRatio } from '../types/cinegen';
@@ -20,6 +21,7 @@ import { VOICES_LIBRARY } from '../data/voices';
 import { audioEngine } from '../services/audioEngine';
 import { VideoPlayer } from './VideoPlayer';
 import { VoiceSelectorModal } from './VoiceSelectorModal';
+import { CoverPageService } from '../services/coverPageService';
 
 interface ChatVideoCardProps {
   project: Project;
@@ -164,6 +166,17 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
     audioEngine.playSFX('chime');
   };
 
+  // Cover Page / Poster Download
+  const handleDownloadCover = async () => {
+    audioEngine.playSFX('whoosh');
+    try {
+      await CoverPageService.downloadCoverImage(project, project.coverStyle || 'cinematic');
+      audioEngine.playSFX('chime');
+    } catch (err) {
+      console.warn('Failed to download cover poster:', err);
+    }
+  };
+
   // Quick Voice Swap
   const handleQuickSwapVoice = (voiceId: string) => {
     onUpdateProject({ selectedVoiceId: voiceId });
@@ -299,6 +312,15 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
             >
               <Volume2 className="h-3.5 w-3.5 text-pink-400" />
               <span>Script (.TXT)</span>
+            </button>
+
+            <button
+              onClick={handleDownloadCover}
+              title="Download High-Resolution Video Cover Page / Poster (.PNG)"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-950/60 hover:bg-slate-800 border border-pink-500/20 text-slate-300 hover:text-white transition-all"
+            >
+              <ImageIcon className="h-3.5 w-3.5 text-pink-400" />
+              <span>Poster (.PNG)</span>
             </button>
           </div>
         </div>

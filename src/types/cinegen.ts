@@ -59,6 +59,8 @@ export interface Particles3DConfig {
   size: number;
 }
 
+export type CoverStyle = 'cinematic' | 'documentary' | 'neon' | 'minimal' | 'vintage';
+
 export interface VideoVariation {
   id: string;
   title: string;
@@ -78,6 +80,9 @@ export interface VideoVariation {
   render3DMode?: Render3DMode;
   videoUrl?: string; // Generated .mp4 video URL
   thumbnailUrl?: string;
+  coverUrl?: string;
+  coverBadge?: string;
+  coverStyle?: CoverStyle;
   project: Project;
 }
 
@@ -211,6 +216,10 @@ export interface Project {
   // AI Video Generation Result & State
   videoUrl?: string; // High-resolution .mp4 generated video URL
   thumbnailUrl?: string;
+  coverUrl?: string;
+  coverBadge?: string;
+  coverTheme?: string;
+  coverStyle?: CoverStyle;
   generationTaskId?: string;
   generationStatus?: 'idle' | 'starting' | 'processing' | 'completed' | 'failed';
   aiModel?: string;

@@ -1,5 +1,6 @@
 import { Project, SceneSegment, CameraTrajectory, VideoVariation, AspectRatio } from '../types/cinegen';
 import { COFFEE_PROJECT } from '../data/defaultProjects';
+import { CoverPageService } from './coverPageService';
 
 export interface GenerationProgress {
   stage: 'script' | 'storyboard' | 'generating' | 'variety' | 'done';
@@ -1528,12 +1529,19 @@ Produced autonomously by Cinegen 3D AI Video Studio.
       matchedVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-coffee-beans-falling-in-slow-motion-42686-large.mp4';
     }
 
+    const topicCover = CoverPageService.detectCoverTopic(prompt, projectTitle, visualTheme);
+
     return {
       ...COFFEE_PROJECT,
       id: `proj-veo-${Date.now()}`,
       title: projectTitle,
       prompt,
       videoUrl: matchedVideoUrl,
+      coverUrl: topicCover.coverImageUrl,
+      thumbnailUrl: topicCover.coverImageUrl,
+      coverBadge: topicCover.badge,
+      coverTheme: topicCover.id,
+      coverStyle: 'cinematic',
       logline: `A captivating 6-minute Google Veo realistic cinematic 3D odyssey exploring the depths, beauty, and monumental scale of ${prompt}.`,
       tone,
       colorGrade,
