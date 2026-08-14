@@ -244,4 +244,34 @@ export class VideoApiService {
       2000
     );
   }
+
+  /**
+   * Reloads / refreshes signed video stream URL if expired or decoding failed
+   */
+  static async reloadVideoUrl(params: {
+    taskId?: string;
+    videoUrl?: string | null;
+    prompt?: string;
+    model?: string;
+  }): Promise<VideoTaskResponse> {
+    try {
+      const res = await fetch(`${API_BASE}/reload-video`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Stream reload failed with status ${res.status}`);
+      }
+
+      return data;
+    } catch (err: unknown) {
+      console.error('[VideoApiService] reloadVideoUrl error:', err);
+      throw err;
+    }
+  }
 }

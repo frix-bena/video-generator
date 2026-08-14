@@ -129,8 +129,9 @@ export const VideoCoverPage: React.FC<VideoCoverPageProps> = ({
             <span>{project?.coverBadge || topicInfo.badge}</span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 text-[11px] font-mono">
-            <span>1080p 60 FPS</span>
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 text-[11px] font-mono">
+            <Film className="h-3 w-3 text-pink-400" />
+            <span>{project?.segments?.length ? `${project.segments.length} Scenes` : '8 Scenes'} • 1080p</span>
           </div>
         </div>
 
@@ -214,18 +215,23 @@ export const VideoCoverPage: React.FC<VideoCoverPageProps> = ({
           <Play className="h-9 w-9 sm:h-11 sm:w-11 translate-x-0.5 fill-white relative z-10 drop-shadow-md" />
         </div>
 
-        <div className="mt-3.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold tracking-wider uppercase shadow-lg group-hover/cover:border-pink-500/40 group-hover/cover:text-pink-300 transition-colors">
-          ▶ Click to Play Video
+        <div className="mt-3.5 px-4 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-pink-500/40 text-white text-xs sm:text-sm font-bold tracking-wider uppercase shadow-xl group-hover/cover:border-pink-400 group-hover/cover:text-pink-200 transition-all flex items-center gap-2">
+          <Play className="h-3.5 w-3.5 fill-pink-400 text-pink-400" />
+          <span>Play / Start Watching</span>
         </div>
       </div>
 
       {/* Bottom Title Card & Film Metadata */}
       <div className="z-10 space-y-2.5 pt-2">
         <div>
-          {/* Stylized Category Hook */}
+          {/* Stylized Category Hook & Scene Count */}
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[11px] font-bold font-mono tracking-widest uppercase text-pink-400 drop-shadow-sm">
               {topicInfo.category}
+            </span>
+            <span className="text-slate-500">•</span>
+            <span className="text-[11px] font-mono text-slate-300">
+              {project?.segments?.length || 8} Master Scenes
             </span>
           </div>
 

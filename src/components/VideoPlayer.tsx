@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -12,9 +12,14 @@ import {
   Download, 
   Sparkles, 
   AlertTriangle,
+  RefreshCw,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Project } from '../types/cinegen';
 import { audioEngine } from '../services/audioEngine';
+import { VideoCoverPage } from './VideoCoverPage';
+import { CoverPageService } from '../services/coverPageService';
+import { VideoApiService } from '../services/videoApiService';
 
 export interface VideoPlayerProps {
   project?: Project;
@@ -29,6 +34,47 @@ export interface VideoPlayerProps {
   className?: string;
 }
 
+/**
+ * Checks if a string URL points to a static image format
+ */
+const isImageUrl = (url?: string | null): boolean => {
+  if (!url) return false;
+  if (url.startsWith('data:image/')) return true;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)$/i.test(cleanUrl);
+};
+
+/**
+ * Validates video stream URL before mounting:
+ * - Must be non-empty string starting with http://, https://, blob:, or data:video/
+ * - Must NOT be a JSON error payload or raw object string
+ * - Must NOT be an image format
+ */
+const isValidVideoUrl = (url: unknown): url is string => {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  
+  // Guard against stringified error JSON payloads
+  if (
+    trimmed.startsWith('{') || 
+    trimmed.startsWith('[') || 
+    trimmed.includes('"error"') || 
+    trimmed === '[object Object]'
+  ) {
+    return false;
+  }
+
+  // Ensure valid scheme
+  const hasValidProtocol = /^https?:\/\//i.test(trimmed) || /^blob:/i.test(trimmed) || /^data:video\//i.test(trimmed);
+  if (!hasValidProtocol) return false;
+
+  // Exclude static images
+  if (isImageUrl(trimmed)) return false;
+
+  return true;
+};
+
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   project,
   videoUrl: propVideoUrl,
@@ -37,26 +83,64 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   generationMessage,
   currentSegmentIndex = 0,
   onSegmentChange,
-  onUpdateProject: _onUpdateProject,
-  autoPlay = true,
+  onUpdateProject,
+  autoPlay = false,
   className = '',
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
 
-  // 1. Determine active video URL (from direct prop, project, or selected variation)
+  // 1. Determine and validate active video stream URL
   const activeVariation = project?.variations?.find((v) => v.id === project?.selectedVariationId);
-  const videoUrl = propVideoUrl || project?.videoUrl || activeVariation?.videoUrl || null;
+  const rawVideoUrl = propVideoUrl || project?.videoUrl || activeVariation?.videoUrl || null;
+  const validatedInitialUrl = isValidVideoUrl(rawVideoUrl) ? rawVideoUrl : null;
 
-  const isImageUrl = (url?: string | null): boolean => {
-    if (!url) return false;
-    if (url.startsWith('data:image/')) return true;
-    const cleanUrl = url.split('?')[0].toLowerCase();
-    return /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)$/i.test(cleanUrl);
-  };
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(validatedInitialUrl);
+  const [isReloadingVideo, setIsReloadingVideo] = useState<boolean>(false);
 
-  const hasValidVideoUrl = Boolean(videoUrl && !isImageUrl(videoUrl));
+  // Synchronize state when input URL props change
+  useEffect(() => {
+    if (isValidVideoUrl(rawVideoUrl)) {
+      setActiveVideoUrl(rawVideoUrl);
+      setPlaybackError(null);
+    } else if (!rawVideoUrl) {
+      setActiveVideoUrl(null);
+    }
+  }, [rawVideoUrl]);
+
+  const hasValidVideoUrl = Boolean(activeVideoUrl);
+
+  // 2. Resolve high-resolution Cover Image and poster frame
+  const resolveCoverImage = useCallback((): string => {
+    if (project?.coverUrl) return project.coverUrl;
+    if (project?.thumbnailUrl) return project.thumbnailUrl;
+    if (activeVariation?.coverUrl) return activeVariation.coverUrl;
+    if (activeVariation?.thumbnailUrl) return activeVariation.thumbnailUrl;
+    const topicInfo = CoverPageService.detectCoverTopic(
+      project?.prompt,
+      project?.title,
+      project?.colorGrade,
+      project?.segments?.flatMap((s) => s.visualKeywords || [])
+    );
+    return topicInfo.coverImageUrl;
+  }, [
+    project?.coverUrl, 
+    project?.thumbnailUrl, 
+    activeVariation?.coverUrl, 
+    activeVariation?.thumbnailUrl, 
+    project?.prompt, 
+    project?.title, 
+    project?.colorGrade, 
+    project?.segments
+  ]);
+
+  const [coverImageUrl, setCoverImageUrl] = useState<string>(resolveCoverImage());
+  const [showCoverOverlay, setShowCoverOverlay] = useState<boolean>(!autoPlay);
+
+  useEffect(() => {
+    setCoverImageUrl(resolveCoverImage());
+  }, [resolveCoverImage]);
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -88,16 +172,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
-  // Autoplay handler when videoUrl is mounted or changes
+  // Autoplay handler when valid videoUrl is mounted or changes
   useEffect(() => {
-    if (videoUrl && hasValidVideoUrl && videoRef.current) {
+    if (activeVideoUrl && hasValidVideoUrl && videoRef.current) {
       setPlaybackError(null);
       if (autoPlay) {
-        // Trigger programmatic autoplay with audio or muted fallback
+        setShowCoverOverlay(false);
         videoRef.current.play().then(() => {
           setIsPlaying(true);
         }).catch((_err) => {
-          // If browser blocks unmuted autoplay, mute and play
+          // If browser blocks unmuted autoplay, mute and retry
           if (videoRef.current) {
             videoRef.current.muted = true;
             setIsMuted(true);
@@ -108,7 +192,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         });
       }
     }
-  }, [videoUrl, hasValidVideoUrl, autoPlay]);
+  }, [activeVideoUrl, hasValidVideoUrl, autoPlay]);
 
   // Sync volume with video ref
   useEffect(() => {
@@ -134,6 +218,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
       setIsVideoBuffering(false);
       if (autoPlay) {
+        setShowCoverOverlay(false);
         videoRef.current.play().catch(() => {});
       }
     }
@@ -165,14 +250,112 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const handleTogglePlay = () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused || videoRef.current.ended) {
+      setShowCoverOverlay(false);
       videoRef.current.play().then(() => {
         setIsPlaying(true);
         audioEngine.playSFX('click');
-      }).catch((e) => console.warn('Play error:', e));
+      }).catch((e) => console.warn('[VideoPlayer] Play error:', e));
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
       audioEngine.playSFX('click');
+    }
+  };
+
+  // Dedicated Play / Start Watching handler from Cover Page
+  const handleStartWatching = () => {
+    setShowCoverOverlay(false);
+    audioEngine.playSFX('whoosh');
+    if (videoRef.current) {
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+        setPlaybackError(null);
+      }).catch((_err) => {
+        console.warn('[VideoPlayer] Play blocked, attempting muted playback:', _err);
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          setIsMuted(true);
+          videoRef.current.play().then(() => {
+            setIsPlaying(true);
+          }).catch((e) => console.warn('[VideoPlayer] Fallback play failed:', e));
+        }
+      });
+    }
+  };
+
+  // Video error handler logging exact MediaError code to console
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const error = e.currentTarget.error;
+    console.error("Video Error Code:", error?.code, "Message:", error?.message);
+
+    let detailedMessage = 'Unable to decode video format.';
+    if (error) {
+      switch (error.code) {
+        case 1: // MEDIA_ERR_ABORTED
+          detailedMessage = 'Video playback was aborted by user or application.';
+          break;
+        case 2: // MEDIA_ERR_NETWORK
+          detailedMessage = 'A network error occurred while downloading the video stream.';
+          break;
+        case 3: // MEDIA_ERR_DECODE
+          detailedMessage = 'Unable to decode video format. The stream is corrupted or format is unsupported.';
+          break;
+        case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+          detailedMessage = 'Video stream format or MIME type is not supported by your browser.';
+          break;
+        default:
+          detailedMessage = error.message || 'Unable to decode video format.';
+      }
+    }
+    setPlaybackError(detailedMessage);
+    setIsVideoBuffering(false);
+  };
+
+  // Graceful Stream Recovery: Requests a fresh signed URL from backend
+  const handleReloadVideo = async () => {
+    setIsReloadingVideo(true);
+    setPlaybackError(null);
+    audioEngine.playSFX('whoosh');
+
+    try {
+      const result = await VideoApiService.reloadVideoUrl({
+        taskId: project?.generationTaskId,
+        videoUrl: activeVideoUrl,
+        prompt: project?.prompt || project?.title || 'Cinematic photorealistic video',
+        model: project?.aiModel,
+      });
+
+      if (result.success && result.videoUrl && isValidVideoUrl(result.videoUrl)) {
+        setActiveVideoUrl(result.videoUrl);
+        if (result.thumbnailUrl) {
+          setCoverImageUrl(result.thumbnailUrl);
+        }
+        onUpdateProject?.({
+          videoUrl: result.videoUrl,
+          thumbnailUrl: result.thumbnailUrl || project?.thumbnailUrl,
+        });
+        setPlaybackError(null);
+
+        // Reload video element
+        if (videoRef.current) {
+          videoRef.current.load();
+          setTimeout(() => {
+            videoRef.current?.play().then(() => {
+              setIsPlaying(true);
+              setShowCoverOverlay(false);
+            }).catch(() => {});
+          }, 150);
+        }
+        audioEngine.playSFX('chime');
+      } else {
+        throw new Error(result.error || 'Failed to acquire fresh stream URL');
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to reload video stream URL';
+      console.error('[VideoPlayer] Reload Video Error:', err);
+      setPlaybackError(`Stream reload error: ${errMsg}. Click Reload to retry.`);
+    } finally {
+      setIsReloadingVideo(false);
     }
   };
 
@@ -254,10 +437,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Direct .MP4 Download Handler
   const handleDownloadVideo = () => {
-    if (!videoUrl) return;
+    if (!activeVideoUrl) return;
     audioEngine.playSFX('whoosh');
     const a = document.createElement('a');
-    a.href = videoUrl;
+    a.href = activeVideoUrl;
     const cleanTitle = (project?.title || 'generated_ai_video').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     a.download = `${cleanTitle}.mp4`;
     a.target = '_blank';
@@ -364,73 +547,115 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
 
-        {/* State B: HTML5 <video> Element (Active when videoUrl is valid) */}
+        {/* State B: HTML5 <video> Element (Active when activeVideoUrl is valid) */}
         {hasValidVideoUrl && (
           <video
             ref={videoRef}
-            key={videoUrl!}
-            src={videoUrl!}
+            key={activeVideoUrl!}
+            poster={coverImageUrl}
+            playsInline
+            crossOrigin="anonymous"
+            className="w-full h-full object-cover cursor-pointer"
             preload="auto"
             autoPlay={autoPlay}
             muted={isMuted}
-            playsInline
             loop
             onLoadedMetadata={handleLoadedMetadata}
             onDurationChange={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}
             onCanPlay={() => setIsVideoBuffering(false)}
             onWaiting={() => setIsVideoBuffering(true)}
+            onPlay={() => {
+              setShowCoverOverlay(false);
+              setIsPlaying(true);
+            }}
             onPlaying={() => {
+              setShowCoverOverlay(false);
               setIsVideoBuffering(false);
               setIsPlaying(true);
               setPlaybackError(null);
             }}
             onPause={() => setIsPlaying(false)}
             onEnded={() => setIsPlaying(false)}
-            onError={(e) => {
-              console.error('[VideoPlayer] Playback Error:', e);
-              setPlaybackError('Unable to decode video format. Please check stream URL.');
-              setIsVideoBuffering(false);
-            }}
+            onError={handleVideoError}
             onClick={handleTogglePlay}
-            className="w-full h-full object-cover cursor-pointer"
+          >
+            {activeVideoUrl && (
+              <source 
+                src={activeVideoUrl} 
+                type={activeVideoUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'}
+                onError={(e) => {
+                  console.error('[VideoPlayer Source Error]:', e);
+                  if (videoRef.current?.error) {
+                    console.error("Video Error Code:", videoRef.current.error.code, "Message:", videoRef.current.error.message);
+                  }
+                  setPlaybackError('Unable to decode video format. Stream format or codec is unsupported.');
+                  setIsVideoBuffering(false);
+                }}
+              />
+            )}
+            Your browser does not support the video tag.
+          </video>
+        )}
+
+        {/* Dedicated Styled Video Cover Page Overlay */}
+        {showCoverOverlay && hasValidVideoUrl && !isGenerating && (
+          <VideoCoverPage
+            project={project}
+            onPlay={handleStartWatching}
+            onUpdateProject={(updated) => {
+              if (updated.coverUrl) setCoverImageUrl(updated.coverUrl);
+              onUpdateProject?.(updated);
+            }}
+            className="z-25 animate-in fade-in duration-300"
           />
         )}
 
-        {/* Playback Error Banner */}
+        {/* Playback Error Banner with Graceful Stream Recovery */}
         {playbackError && (
-          <div className="absolute inset-x-4 top-14 z-30 flex items-center justify-between gap-3 rounded-xl bg-rose-950/95 border border-rose-500/80 p-4 text-rose-200 backdrop-blur-md shadow-2xl">
+          <div className="absolute inset-x-4 top-14 z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl bg-rose-950/95 border border-rose-500/80 p-4 text-rose-200 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
               <div className="text-left text-xs">
-                <p className="font-bold text-rose-100 uppercase">Video Stream Playback Notice</p>
+                <p className="font-bold text-rose-100 uppercase tracking-wide">Video Stream Playback Notice</p>
                 <p className="text-rose-300/90 mt-0.5">{playbackError}</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setPlaybackError(null);
-                if (videoRef.current) {
-                  videoRef.current.load();
-                  videoRef.current.play().catch(() => {});
-                }
-              }}
-              className="btn-cine-primary px-3 py-1 text-xs font-bold shrink-0"
-            >
-              Retry Stream
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={handleReloadVideo}
+                disabled={isReloadingVideo}
+                className="flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 active:scale-95 px-3 py-1.5 text-xs font-bold text-white transition-all shadow-lg cursor-pointer disabled:opacity-50"
+                title="Request fresh signed URL from backend"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isReloadingVideo ? 'animate-spin' : ''}`} />
+                <span>{isReloadingVideo ? 'Refreshing Stream...' : 'Reload Video'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setPlaybackError(null);
+                  if (videoRef.current) {
+                    videoRef.current.load();
+                    videoRef.current.play().catch(() => {});
+                  }
+                }}
+                className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-all cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
 
         {/* Buffering Indicator */}
-        {isVideoBuffering && hasValidVideoUrl && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-25 pointer-events-none">
+        {isVideoBuffering && hasValidVideoUrl && !showCoverOverlay && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-20 pointer-events-none">
             <div className="h-12 w-12 rounded-full border-4 border-pink-500/30 border-t-pink-500 animate-spin shadow-lg" />
           </div>
         )}
 
-        {/* Center Big Play / Pause Overlay Icon */}
-        {hasValidVideoUrl && !isPlaying && !isVideoBuffering && (
+        {/* Center Big Play / Pause Overlay Icon (When paused and cover is not showing) */}
+        {hasValidVideoUrl && !isPlaying && !isVideoBuffering && !showCoverOverlay && (
           <button
             onClick={handleTogglePlay}
             className="absolute inset-0 m-auto h-16 w-16 rounded-full bg-pink-600/80 hover:bg-pink-500 hover:scale-110 active:scale-95 text-white flex items-center justify-center shadow-2xl shadow-pink-500/50 backdrop-blur-md border border-white/20 transition-all duration-200 z-20 cursor-pointer"
@@ -441,7 +666,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         )}
 
         {/* Subtitles Overlay */}
-        {showSubtitles && currentSegment?.narration && hasValidVideoUrl && (
+        {showSubtitles && currentSegment?.narration && hasValidVideoUrl && !showCoverOverlay && (
           <div className="absolute bottom-16 inset-x-6 z-20 pointer-events-none flex justify-center text-center">
             <div className="max-w-xl rounded-xl bg-black/80 backdrop-blur-md border border-white/10 px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2">
               <span className="text-pink-300 font-bold mr-1.5">{currentSegment.title}:</span>
@@ -470,9 +695,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         </div>
 
-        {/* Top-Right: Direct Download Button in Viewport */}
+        {/* Top-Right Action Badges in Viewport */}
         {hasValidVideoUrl && (
           <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+            {/* Toggle Cover Page Button */}
+            <button
+              onClick={() => {
+                if (videoRef.current && isPlaying) {
+                  videoRef.current.pause();
+                  setIsPlaying(false);
+                }
+                setShowCoverOverlay((prev) => !prev);
+              }}
+              className="flex items-center gap-1.5 rounded-xl bg-black/80 hover:bg-slate-900 border border-pink-500/30 hover:border-pink-400 px-2.5 py-1.5 text-xs font-semibold text-pink-200 hover:text-white transition-all shadow-lg backdrop-blur-md cursor-pointer"
+              title="Toggle Cover Page Overlay"
+            >
+              <ImageIcon className="h-3.5 w-3.5 text-pink-400" />
+              <span className="hidden sm:inline">{showCoverOverlay ? 'Hide Cover' : 'Cover Page'}</span>
+            </button>
+
+            {/* Direct Download Button in Viewport */}
             <button
               onClick={handleDownloadVideo}
               className="flex items-center gap-1.5 rounded-xl bg-black/80 hover:bg-slate-900 border border-pink-500/30 hover:border-pink-400 px-3 py-1.5 text-xs font-semibold text-pink-200 hover:text-white transition-all shadow-lg backdrop-blur-md cursor-pointer"
@@ -597,8 +839,30 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
           </div>
 
-          {/* Right Controls: Subtitles, Speed, Download, Fullscreen */}
+          {/* Right Controls: Cover Toggle, Subtitles, Speed, Reload, Download, Fullscreen */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Cover Toggle Button */}
+            {hasValidVideoUrl && (
+              <button
+                onClick={() => {
+                  if (videoRef.current && isPlaying) {
+                    videoRef.current.pause();
+                    setIsPlaying(false);
+                  }
+                  setShowCoverOverlay((prev) => !prev);
+                }}
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  showCoverOverlay 
+                    ? 'bg-pink-500/30 border border-pink-500 text-pink-200' 
+                    : 'hover:bg-white/10 text-slate-300 hover:text-white'
+                }`}
+                title="Show Video Cover Page"
+              >
+                <ImageIcon className="h-3.5 w-3.5 text-pink-400" />
+                <span className="hidden sm:inline">Cover</span>
+              </button>
+            )}
+
             {/* Subtitles Toggle */}
             <button
               onClick={() => setShowSubtitles(!showSubtitles)}
@@ -642,6 +906,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Reload Stream Button */}
+            {hasValidVideoUrl && (
+              <button
+                onClick={handleReloadVideo}
+                disabled={isReloadingVideo}
+                className="h-8 w-8 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+                title="Reload Stream / Refresh Signed URL"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 text-pink-400 ${isReloadingVideo ? 'animate-spin' : ''}`} />
+              </button>
+            )}
 
             {/* Direct Download Button */}
             {hasValidVideoUrl && (

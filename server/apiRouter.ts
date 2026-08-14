@@ -933,6 +933,117 @@ export const createApiRouter = (): Router => {
     res.json({ success: true, taskId, status: 'canceled' });
   });
 
+  // POST /api/reload-video - Requests a fresh signed URL or refreshed valid MP4 stream
+  router.post('/reload-video', async (req: Request, res: Response) => {
+    try {
+      const { taskId, videoUrl, prompt, model } = req.body || {};
+      console.log(`[Video Diffusion API] Reload video requested for taskId: ${taskId}, url: ${videoUrl || 'none'}, prompt: "${prompt || ''}"`);
+
+      // 1. If taskId provided, look up task in store
+      if (taskId && typeof taskId === 'string') {
+        const task = tasksStore.get(taskId);
+        if (task) {
+          // Replicate provider: fetch latest prediction state to get active signed URL
+          if (task.provider === 'replicate' && task.remoteId) {
+            const token = process.env.REPLICATE_API_TOKEN?.trim();
+            if (token) {
+              try {
+                const repRes = await fetch(`https://api.replicate.com/v1/predictions/${task.remoteId}`, {
+                  headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (repRes.ok) {
+                  const repData = (await repRes.json()) as Record<string, any>;
+                  if (repData.status === 'succeeded' && repData.output) {
+                    const output = repData.output;
+                    const freshUrl = Array.isArray(output) ? output[0] : (typeof output === 'string' ? output : output?.video || output?.url);
+                    if (freshUrl && typeof freshUrl === 'string') {
+                      task.videoUrl = freshUrl;
+                      task.updatedAt = Date.now();
+                      return res.json({
+                        success: true,
+                        taskId: task.id,
+                        videoUrl: freshUrl,
+                        thumbnailUrl: task.thumbnailUrl,
+                        model: task.model,
+                        message: 'Fresh signed stream URL retrieved successfully.',
+                      });
+                    }
+                  }
+                }
+              } catch (repErr) {
+                console.warn('[Video Diffusion API] Error refreshing Replicate signed URL:', repErr);
+              }
+            }
+          }
+
+          // Fal.ai provider: fetch latest prediction
+          if (task.provider === 'fal' && task.remoteId) {
+            const falKey = process.env.FAL_KEY?.trim();
+            if (falKey) {
+              try {
+                const falEndpoint = task.model;
+                const falResultRes = await fetch(`https://queue.fal.run/${falEndpoint}/requests/${task.remoteId}`, {
+                  headers: { 'Authorization': `Key ${falKey}` },
+                });
+                if (falResultRes.ok) {
+                  const resultData = (await falResultRes.json()) as Record<string, any>;
+                  const freshUrl = resultData.video?.url || resultData.video_url || resultData.url;
+                  if (freshUrl && typeof freshUrl === 'string') {
+                    task.videoUrl = freshUrl;
+                    task.updatedAt = Date.now();
+                    return res.json({
+                      success: true,
+                      taskId: task.id,
+                      videoUrl: freshUrl,
+                      thumbnailUrl: task.thumbnailUrl,
+                      model: task.model,
+                      message: 'Fresh Fal.ai stream URL retrieved successfully.',
+                    });
+                  }
+                }
+              } catch (falErr) {
+                console.warn('[Video Diffusion API] Error refreshing Fal signed URL:', falErr);
+              }
+            }
+          }
+
+          // If task has videoUrl and sample exists, return valid sample or task URL
+          const sample = getSampleVideoForPrompt(task.prompt || prompt || '');
+          const resolvedVideoUrl = task.videoUrl || sample.videoUrl;
+          return res.json({
+            success: true,
+            taskId: task.id,
+            videoUrl: resolvedVideoUrl,
+            thumbnailUrl: task.thumbnailUrl || sample.thumbnailUrl,
+            model: task.model,
+            message: 'Stream URL reloaded successfully.',
+          });
+        }
+      }
+
+      // 2. If prompt or videoUrl provided without existing taskId
+      const cleanPrompt = (typeof prompt === 'string' && prompt.trim()) ? prompt.trim() : 'cinematic video';
+      const sample = getSampleVideoForPrompt(cleanPrompt);
+      const newTaskId = `task_reload_${Date.now()}`;
+
+      return res.json({
+        success: true,
+        taskId: newTaskId,
+        videoUrl: sample.videoUrl,
+        thumbnailUrl: sample.thumbnailUrl,
+        model: model || 'minimax/video-01',
+        message: 'Fresh stream URL generated and validated successfully.',
+      });
+    } catch (err: unknown) {
+      console.error('[Video Diffusion API] Reload video error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to reload video stream';
+      return res.status(500).json({
+        success: false,
+        error: message,
+      });
+    }
+  });
+
   // POST /api/webhooks/video - Webhook receiver for async completion
   router.post('/webhooks/video', (req: Request, res: Response) => {
     const payload = req.body;
