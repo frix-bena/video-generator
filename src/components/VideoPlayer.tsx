@@ -23,20 +23,24 @@ import { Three3DRenderEngine } from '../services/three3dRenderEngine';
 import { audioEngine } from '../services/audioEngine';
 import { VOICES_LIBRARY } from '../data/voices';
 
-interface VideoPlayerProps {
-  project: Project;
-  currentSegmentIndex: number;
+export interface VideoPlayerProps {
+  project?: Project;
+  videoUrl?: string;
+  currentSegmentIndex?: number;
   onSegmentChange?: (index: number) => void;
   onUpdateProject?: (updated: Partial<Project>) => void;
   autoPlay?: boolean;
+  className?: string;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   project,
-  currentSegmentIndex,
+  videoUrl: propVideoUrl,
+  currentSegmentIndex = 0,
   onSegmentChange,
   onUpdateProject,
   autoPlay = false,
+  className = '',
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvas3DRef = useRef<HTMLCanvasElement | null>(null);
@@ -44,39 +48,39 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engine3DRef = useRef<Three3DRenderEngine | null>(null);
 
-  // Determine active video URL (from project or selected variation)
-  const activeVariation = project.variations?.find((v) => v.id === project.selectedVariationId);
-  const activeVideoUrl = project.videoUrl || activeVariation?.videoUrl;
+  // 1. Determine active video URL (from direct prop, project, or selected variation)
+  const activeVariation = project?.variations?.find((v) => v.id === project?.selectedVariationId);
+  const activeVideoUrl = propVideoUrl || project?.videoUrl || activeVariation?.videoUrl || null;
 
-  // View mode: 'video' (HTML5 <video>) or '3d' (WebGL canvas)
-  const [sourceMode, setSourceMode] = useState<'video' | '3d'>(activeVideoUrl ? 'video' : '3d');
+  // 2. State variable managing view mode: 'mp4' (HTML5 Video) or 'webgl' (Three.js 3D Canvas)
+  const [viewMode, setViewMode] = useState<'mp4' | 'webgl'>(activeVideoUrl ? 'mp4' : 'webgl');
 
   const [isPlaying, setIsPlaying] = useState<boolean>(autoPlay);
   const [globalTime, setGlobalTime] = useState<number>(0);
-  const [videoDuration, setVideoDuration] = useState<number>(project.targetDurationSec || 360);
+  const [videoDuration, setVideoDuration] = useState<number>(project?.targetDurationSec || 360);
   const [videoBuffered, setVideoBuffered] = useState<number>(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [volume, setVolume] = useState<number>(1);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(project.aspectRatio || '16:9');
-  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(project.captionStyle || 'documentary');
-  const [render3DMode, setRender3DMode] = useState<Render3DMode>(project.render3DMode || 'cinematic_pbr');
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(project?.aspectRatio || '16:9');
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(project?.captionStyle || 'documentary');
+  const [render3DMode, setRender3DMode] = useState<Render3DMode>(project?.render3DMode || 'cinematic_pbr');
   const [isInteractive3D, setIsInteractive3D] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordProgress, setRecordProgress] = useState<number>(0);
   const [isVideoLoading, setIsVideoLoading] = useState<boolean>(false);
   const [isCaptionMenuOpen, setIsCaptionMenuOpen] = useState<boolean>(false);
 
-  // Synchronize sourceMode when activeVideoUrl changes
+  // Automatically update state to 'mp4' the moment videoUrl becomes available from the backend API
   useEffect(() => {
     if (activeVideoUrl) {
-      setSourceMode('video');
+      setViewMode('mp4');
     }
   }, [activeVideoUrl]);
 
-  const totalDuration = sourceMode === 'video' && videoDuration > 0 ? videoDuration : (project.targetDurationSec || 360);
-  const segments = project.segments || [];
+  const totalDuration = viewMode === 'mp4' && videoDuration > 0 ? videoDuration : (project?.targetDurationSec || 360);
+  const segments = project?.segments || [];
 
   // Find active segment based on global time
   const currentSegment = segments.find(
@@ -86,26 +90,40 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const currentSegmentIdx = currentSegment ? currentSegment.index : 0;
   const timeInSegment = currentSegment ? globalTime - currentSegment.startTime : 0;
 
-  // Initialize 3D Engine if canvas available
+  // Initialize or clean up Three.js 3D Engine based on viewMode
   useEffect(() => {
-    if (canvas3DRef.current && !engine3DRef.current && sourceMode === '3d') {
-      engine3DRef.current = new Three3DRenderEngine(canvas3DRef.current);
+    if (viewMode === 'webgl' && canvas3DRef.current) {
+      if (!engine3DRef.current) {
+        engine3DRef.current = new Three3DRenderEngine(canvas3DRef.current);
+      }
+    } else {
+      if (engine3DRef.current) {
+        engine3DRef.current.dispose();
+        engine3DRef.current = null;
+      }
     }
-  }, [sourceMode]);
+
+    return () => {
+      if (engine3DRef.current) {
+        engine3DRef.current.dispose();
+        engine3DRef.current = null;
+      }
+    };
+  }, [viewMode]);
 
   // Update 3D Interactive Mode
   useEffect(() => {
-    if (engine3DRef.current && sourceMode === '3d') {
+    if (engine3DRef.current && viewMode === 'webgl') {
       engine3DRef.current.setInteractiveMode(isInteractive3D);
     }
-  }, [isInteractive3D, sourceMode]);
+  }, [isInteractive3D, viewMode]);
 
   // Update 3D Render Mode
   useEffect(() => {
-    if (engine3DRef.current && sourceMode === '3d') {
+    if (engine3DRef.current && viewMode === 'webgl') {
       engine3DRef.current.setRenderMode(render3DMode);
     }
-  }, [render3DMode, sourceMode]);
+  }, [render3DMode, viewMode]);
 
   // Sync segment changes to parent if needed
   useEffect(() => {
@@ -115,18 +133,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [currentSegmentIdx, currentSegmentIndex, onSegmentChange]);
 
   // Voice lookup
-  const selectedVoice = VOICES_LIBRARY.find((v) => v.id === project.selectedVoiceId) || VOICES_LIBRARY[0];
+  const selectedVoice = VOICES_LIBRARY.find((v) => v.id === project?.selectedVoiceId) || VOICES_LIBRARY[0];
 
-  // Speech Narration Trigger on Segment Transition (only in 3D Mode, or video mode if audio engine used)
+  // Speech Narration Trigger on Segment Transition (in 3D Mode)
   const lastSpokenSegmentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isPlaying && currentSegment && currentSegment.id !== lastSpokenSegmentIdRef.current && sourceMode === '3d') {
+    if (isPlaying && currentSegment && currentSegment.id !== lastSpokenSegmentIdRef.current && viewMode === 'webgl') {
       lastSpokenSegmentIdRef.current = currentSegment.id;
       audioEngine.playSFX('whoosh');
       audioEngine.speakNarration(currentSegment.narration, selectedVoice);
     }
-  }, [isPlaying, currentSegment, selectedVoice, sourceMode]);
+  }, [isPlaying, currentSegment, selectedVoice, viewMode]);
 
   // Draw 2D Overlay (Lower Thirds, Vignette, Subtitles, Aspect guides)
   const draw2DOverlay = useCallback((
@@ -277,9 +295,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [aspectRatio, captionStyle]);
 
-  // Main 3D Engine Render Loop (Active in 3D Mode)
+  // Main 3D Engine Render Loop (Only active when in WebGL mode)
   useEffect(() => {
-    if (sourceMode !== '3d') return;
+    if (viewMode !== 'webgl') return;
 
     let animationFrameId: number;
     let lastTimestamp = performance.now();
@@ -321,12 +339,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     animationFrameId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [sourceMode, isPlaying, globalTime, currentSegment, playbackSpeed, totalDuration, captionStyle, aspectRatio, render3DMode, draw2DOverlay]);
+  }, [viewMode, isPlaying, globalTime, currentSegment, playbackSpeed, totalDuration, captionStyle, aspectRatio, render3DMode, draw2DOverlay]);
 
   // HTML5 Video Event Handlers
   const handleVideoLoadedMetadata = () => {
     if (videoRef.current) {
-      setVideoDuration(videoRef.current.duration || project.targetDurationSec || 6);
+      setVideoDuration(videoRef.current.duration || project?.targetDurationSec || 6);
       videoRef.current.playbackRate = playbackSpeed;
       videoRef.current.volume = isMuted ? 0 : volume;
       setIsVideoLoading(false);
@@ -334,13 +352,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.warn('[VideoPlayer] Video element error, switching to 3D WebGL render engine:', e);
+    console.warn('[VideoPlayer] HTML5 Video playback notice:', e);
     setIsVideoLoading(false);
-    setSourceMode('3d');
   };
 
   const handleVideoTimeUpdate = () => {
-    if (videoRef.current && sourceMode === 'video') {
+    if (videoRef.current && viewMode === 'mp4') {
       const cur = videoRef.current.currentTime;
       setGlobalTime(cur);
 
@@ -351,13 +368,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setVideoBuffered((bufferedEnd / dur) * 100);
       }
 
-      // Sync voiceover speech when crossing scene boundaries during video playback
-      if (isPlaying && currentSegment && currentSegment.id !== lastSpokenSegmentIdRef.current && !isMuted) {
-        lastSpokenSegmentIdRef.current = currentSegment.id;
-        audioEngine.speakNarration(currentSegment.narration, selectedVoice);
-      }
-
-      // Draw 2D overlays on top of video
+      // Draw 2D overlays on top of video if needed
       if (currentSegment) {
         const segTime = Math.max(0, cur - currentSegment.startTime);
         const progress = Math.min(Math.max(segTime / (currentSegment.duration || 1), 0), 1);
@@ -379,33 +390,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Play / Pause handler
   const handleTogglePlay = useCallback(() => {
-    if (sourceMode === 'video' && videoRef.current) {
+    if (viewMode === 'mp4' && videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
-        audioEngine.stopSpeaking();
-        audioEngine.stopMusic();
         setIsPlaying(false);
       } else {
         videoRef.current.play().then(() => {
           setIsPlaying(true);
-          if (!isMuted) {
-            audioEngine.setMute(false);
-            audioEngine.startMusic(project.musicStyle || 'cinematic');
-            if (currentSegment) {
-              lastSpokenSegmentIdRef.current = currentSegment.id;
-              audioEngine.speakNarration(currentSegment.narration, selectedVoice);
-            }
-          }
         }).catch((err) => {
-          console.warn('Video play error, falling back to 3D mode:', err);
-          setSourceMode('3d');
-          setIsPlaying(true);
-          if (!isMuted) {
-            audioEngine.startMusic(project.musicStyle || 'cinematic');
-            if (currentSegment) {
-              audioEngine.speakNarration(currentSegment.narration, selectedVoice);
-            }
-          }
+          console.warn('[VideoPlayer] Video play promise notice:', err);
         });
       }
       return;
@@ -414,7 +407,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     // 3D Mode Play/Pause
     if (!isPlaying) {
       audioEngine.setMute(isMuted);
-      audioEngine.startMusic(project.musicStyle || 'cinematic');
+      if (project?.musicStyle) {
+        audioEngine.startMusic(project.musicStyle);
+      }
       if (currentSegment) {
         lastSpokenSegmentIdRef.current = currentSegment.id;
         audioEngine.speakNarration(currentSegment.narration, selectedVoice);
@@ -425,7 +420,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       audioEngine.stopMusic();
       setIsPlaying(false);
     }
-  }, [sourceMode, isPlaying, isMuted, project.musicStyle, currentSegment, selectedVoice]);
+  }, [viewMode, isPlaying, isMuted, project?.musicStyle, currentSegment, selectedVoice]);
 
   // Jump to specific timestamp
   const handleSeek = (time: number) => {
@@ -435,11 +430,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     audioEngine.stopSpeaking();
     lastSpokenSegmentIdRef.current = null;
 
-    if (sourceMode === 'video' && videoRef.current) {
+    if (viewMode === 'mp4' && videoRef.current) {
       videoRef.current.currentTime = clamped;
     }
 
-    if (isPlaying && !isMuted) {
+    if (isPlaying && !isMuted && viewMode === 'webgl') {
       const targetSeg = segments.find((s) => clamped >= s.startTime && clamped < s.endTime);
       if (targetSeg) {
         lastSpokenSegmentIdRef.current = targetSeg.id;
@@ -501,7 +496,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Export / Download generated video
   const handleExportOrDownload = async () => {
-    // If MP4 video is available, download directly!
+    // If MP4 video is available, download directly
     if (activeVideoUrl) {
       try {
         const response = await fetch(activeVideoUrl);
@@ -509,7 +504,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl;
-        a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
+        a.download = `${(project?.title || 'video').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -517,7 +512,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       } catch {
         const a = document.createElement('a');
         a.href = activeVideoUrl;
-        a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
+        a.download = `${(project?.title || 'video').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_master.mp4`;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         document.body.appendChild(a);
@@ -548,7 +543,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_3d_master.webm`;
+      a.download = `${(project?.title || '3d_video').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_3d_master.webm`;
       a.click();
       setIsRecording(false);
       audioEngine.playSFX('chime');
@@ -582,18 +577,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div 
       ref={containerRef}
-      className="relative flex flex-col rounded-2xl overflow-hidden border border-pink-500/30 bg-slate-950 shadow-2xl shadow-black/90 group/player select-none"
+      className={`relative flex flex-col rounded-2xl overflow-hidden border border-pink-500/30 bg-slate-950 shadow-2xl shadow-black/90 group/player select-none ${className}`}
     >
       {/* Video / 3D Canvas Visual Container */}
       <div className="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
         
-        {/* Layer 1A: HTML5 <video> Element (Active when MP4 video is rendered) */}
-        {sourceMode === 'video' && activeVideoUrl && (
+        {/* Layer 1A: HTML5 <video> Element (Active when in 'mp4' mode AND videoUrl exists) */}
+        {viewMode === 'mp4' && activeVideoUrl && (
           <video
             ref={videoRef}
+            key={activeVideoUrl}
             src={activeVideoUrl}
+            autoPlay={autoPlay || isPlaying}
+            loop
+            controls
             playsInline
-            loop={false}
             onLoadedMetadata={handleVideoLoadedMetadata}
             onTimeUpdate={handleVideoTimeUpdate}
             onEnded={handleVideoEnded}
@@ -602,13 +600,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onPause={() => setIsPlaying(false)}
             onWaiting={() => setIsVideoLoading(true)}
             onPlaying={() => setIsVideoLoading(false)}
-            onClick={handleTogglePlay}
-            className="h-full w-full object-contain cursor-pointer z-10"
+            className="w-full h-full object-cover rounded-lg"
           />
         )}
 
-        {/* Layer 1B: Three.js 3D WebGL Canvas (Active when in 3D mode or when no MP4 URL) */}
-        {sourceMode === '3d' && (
+        {/* Layer 1B: Three.js 3D WebGL Canvas (Active ONLY when in 'webgl' mode) */}
+        {viewMode === 'webgl' && (
           <canvas
             ref={canvas3DRef}
             width={1280}
@@ -618,14 +615,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           />
         )}
 
-        {/* Fallback if in Video mode but URL is loading */}
-        {sourceMode === 'video' && !activeVideoUrl && (
+        {/* Fallback if user toggles to MP4 mode but video is still generating */}
+        {viewMode === 'mp4' && !activeVideoUrl && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-center p-6 space-y-3 z-10">
             <div className="h-10 w-10 rounded-full border-2 border-pink-500 border-t-transparent animate-spin" />
             <p className="text-sm font-bold text-white">Synthesizing High-Resolution MP4 Stream...</p>
-            <p className="text-xs text-slate-400">Switching to 3D WebGL engine in the meantime.</p>
+            <p className="text-xs text-slate-400">View the real-time 3D WebGL engine while your video renders.</p>
             <button
-              onClick={() => setSourceMode('3d')}
+              onClick={() => setViewMode('webgl')}
               className="btn-cine-primary text-xs px-4 py-1.5 rounded-xl font-bold"
             >
               View 3D WebGL Engine
@@ -633,13 +630,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
 
-        {/* Layer 2: 2D Overlay Canvas (Captions, Lower-Thirds, Vignette) */}
-        <canvas
-          ref={overlayCanvasRef}
-          width={1280}
-          height={720}
-          className="absolute inset-0 h-full w-full object-contain pointer-events-none z-15"
-        />
+        {/* Layer 2: 2D Overlay Canvas (Captions, Lower-Thirds, Vignette) - Pointer Events None */}
+        {viewMode === 'webgl' && (
+          <canvas
+            ref={overlayCanvasRef}
+            width={1280}
+            height={720}
+            className="absolute inset-0 h-full w-full object-contain pointer-events-none z-15"
+          />
+        )}
 
         {/* Video Loading Spinner Overlay */}
         {isVideoLoading && (
@@ -648,24 +647,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
 
-        {/* Top-Left: Mode & Cinema Badges */}
+        {/* Top-Left: Mode & Model Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-2 z-20 pointer-events-auto">
-          {sourceMode === 'video' && activeVideoUrl ? (
+          {viewMode === 'mp4' && activeVideoUrl ? (
             <div className="flex items-center gap-1.5 rounded-lg bg-black/80 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-emerald-300 border border-emerald-500/40 shadow-lg">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>HTML5 MP4 VIDEO • HIGH FIDELITY</span>
+              <span>AI VIDEO (.MP4) • HIGH FIDELITY</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 rounded-lg bg-black/80 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-pink-300 border border-pink-500/30 shadow-lg">
               <span className="h-2 w-2 rounded-full bg-pink-400 animate-ping" />
-              <span>REALISTIC 3D MASTER • 60 FPS</span>
+              <span>3D WEBGL ENGINE • 60 FPS</span>
             </div>
           )}
 
           {/* Model info badge */}
-          {(project.aiModel || activeVariation?.styleName) && (
+          {(project?.aiModel || activeVariation?.styleName) && (
             <div className="rounded-lg bg-black/80 backdrop-blur-md px-2 py-1 text-[11px] font-mono text-pink-200 border border-pink-500/30 shadow-lg hidden sm:block">
-              {project.aiModel || activeVariation?.styleName || 'Cinema Master'}
+              {project?.aiModel || activeVariation?.styleName || 'Minimax Video-01'}
             </div>
           )}
         </div>
@@ -673,44 +672,46 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Top-Right: Mode Switcher & Camera Orbit Controls */}
         <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
           {/* Toggle between HTML5 MP4 Video & 3D WebGL Canvas */}
-          {activeVideoUrl && (
-            <div className="flex items-center rounded-xl bg-black/80 backdrop-blur-md border border-pink-500/30 p-0.5 shadow-lg">
-              <button
-                onClick={() => {
-                  setSourceMode('video');
-                  setIsPlaying(false);
-                }}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  sourceMode === 'video'
-                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="View AI Generated .MP4 Video"
-              >
-                <Film className="h-3 w-3" />
-                <span>AI Video (.MP4)</span>
-              </button>
-              <button
-                onClick={() => {
-                  setSourceMode('3d');
-                  setIsPlaying(false);
-                }}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  sourceMode === '3d'
-                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="View Interactive 3D WebGL Scene"
-              >
-                <Box className="h-3 w-3" />
-                <span>3D WebGL</span>
-              </button>
-            </div>
-          )}
-
-          {/* Interactive 3D Orbit Camera Toggle (when in 3D mode) */}
-          {sourceMode === '3d' && (
+          <div className="flex items-center rounded-xl bg-black/80 backdrop-blur-md border border-pink-500/30 p-0.5 shadow-lg">
             <button
+              type="button"
+              onClick={() => {
+                if (activeVideoUrl) {
+                  setViewMode('mp4');
+                }
+              }}
+              disabled={!activeVideoUrl}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'mp4'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm font-bold'
+                  : activeVideoUrl
+                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-slate-600 opacity-40 cursor-not-allowed'
+              }`}
+              title={activeVideoUrl ? 'View AI Generated .MP4 Video' : 'AI Video (.MP4) is still generating or unavailable'}
+            >
+              <Film className="h-3 w-3" />
+              <span>AI Video (.MP4)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('webgl')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'webgl'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="View Interactive 3D WebGL Scene"
+            >
+              <Box className="h-3 w-3" />
+              <span>3D WebGL</span>
+            </button>
+          </div>
+
+          {/* Interactive 3D Orbit Camera Toggle (when in 3D WebGL mode) */}
+          {viewMode === 'webgl' && (
+            <button
+              type="button"
               onClick={() => setIsInteractive3D(!isInteractive3D)}
               className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold backdrop-blur-md border transition-all duration-200 ${
                 isInteractive3D
@@ -724,21 +725,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
           )}
 
-          <div className="rounded-xl bg-pink-950/90 backdrop-blur-md px-3 py-1 text-xs font-semibold text-pink-200 border border-pink-500/40 shadow-lg hidden md:block">
-            Scene {currentSegmentIdx + 1} / {segments.length}: {currentSegment?.title.split(':')[1] || currentSegment?.title || 'Main Timeline'}
-          </div>
+          {segments.length > 0 && (
+            <div className="rounded-xl bg-pink-950/90 backdrop-blur-md px-3 py-1 text-xs font-semibold text-pink-200 border border-pink-500/40 shadow-lg hidden md:block">
+              Scene {currentSegmentIdx + 1} / {segments.length}: {currentSegment?.title?.split(':')[1] || currentSegment?.title || 'Main Timeline'}
+            </div>
+          )}
         </div>
 
         {/* Interactive 3D Orbit Tip Toast */}
-        {sourceMode === '3d' && isInteractive3D && (
+        {viewMode === 'webgl' && isInteractive3D && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-md border border-pink-500/40 rounded-full px-4 py-1 text-xs text-pink-200 shadow-xl flex items-center gap-2 pointer-events-none animate-pulse z-20">
             <Compass className="h-3.5 w-3.5 text-pink-400" />
             <span>Click & drag to rotate 3D angle • Scroll to zoom</span>
           </div>
         )}
 
-        {/* Big Center Play/Pause Button on Hover */}
-        {!isPlaying && !isInteractive3D && (
+        {/* Center Play Button Overlay for 3D WebGL Canvas */}
+        {viewMode === 'webgl' && !isPlaying && !isInteractive3D && (
           <div 
             onClick={handleTogglePlay}
             className="absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[2px] cursor-pointer transition-opacity z-20 group-hover/player:bg-black/25"
@@ -772,46 +775,55 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Visual Segment Slices / Buffered Bar */}
         <div className="relative mb-2">
           <div className="flex h-3 w-full gap-1 rounded-full overflow-hidden bg-slate-950 p-0.5 border border-pink-500/20 relative">
-            {/* Background buffered track (for HTML5 video) */}
-            {sourceMode === 'video' && videoBuffered > 0 && (
+            {/* Background buffered track */}
+            {viewMode === 'mp4' && videoBuffered > 0 && (
               <div 
                 className="absolute top-0 left-0 h-full bg-pink-900/40 rounded-full transition-all duration-300 pointer-events-none"
                 style={{ width: `${videoBuffered}%` }}
               />
             )}
 
-            {segments.map((seg, i) => {
-              const segPct = (seg.duration / totalDuration) * 100;
-              const isCurrent = currentSegmentIdx === i;
-              const isPast = globalTime >= seg.endTime;
-              const isInProgress = globalTime >= seg.startTime && globalTime < seg.endTime;
-              const segProgress = isInProgress ? (globalTime - seg.startTime) / seg.duration : isPast ? 1 : 0;
+            {segments.length > 0 ? (
+              segments.map((seg, i) => {
+                const segPct = (seg.duration / totalDuration) * 100;
+                const isCurrent = currentSegmentIdx === i;
+                const isPast = globalTime >= seg.endTime;
+                const isInProgress = globalTime >= seg.startTime && globalTime < seg.endTime;
+                const segProgress = isInProgress ? (globalTime - seg.startTime) / seg.duration : isPast ? 1 : 0;
 
-              return (
-                <div
-                  key={seg.id}
-                  onClick={() => handleSeek(seg.startTime)}
-                  style={{ width: `${segPct}%` }}
-                  title={`${seg.title} (${formatTime(seg.startTime)} - ${formatTime(seg.endTime)})`}
-                  className={`relative h-full cursor-pointer transition-all hover:brightness-125 z-10 ${
-                    isCurrent ? 'ring-1 ring-pink-400' : ''
-                  }`}
-                >
-                  <div className="h-full w-full bg-slate-800/80 rounded-sm overflow-hidden">
-                    <div 
-                      className={`h-full transition-all ${
-                        isCurrent 
-                          ? 'bg-gradient-to-r from-pink-500 to-rose-500' 
-                          : isPast 
-                          ? 'bg-pink-700/60' 
-                          : 'bg-transparent'
-                      }`}
-                      style={{ width: `${segProgress * 100}%` }}
-                    />
+                return (
+                  <div
+                    key={seg.id}
+                    onClick={() => handleSeek(seg.startTime)}
+                    style={{ width: `${segPct}%` }}
+                    title={`${seg.title} (${formatTime(seg.startTime)} - ${formatTime(seg.endTime)})`}
+                    className={`relative h-full cursor-pointer transition-all hover:brightness-125 z-10 ${
+                      isCurrent ? 'ring-1 ring-pink-400' : ''
+                    }`}
+                  >
+                    <div className="h-full w-full bg-slate-800/80 rounded-sm overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${
+                          isCurrent 
+                            ? 'bg-gradient-to-r from-pink-500 to-rose-500' 
+                            : isPast 
+                            ? 'bg-pink-700/60' 
+                            : 'bg-transparent'
+                        }`}
+                        style={{ width: `${segProgress * 100}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="h-full w-full bg-slate-800/80 rounded-sm overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all"
+                  style={{ width: `${Math.min(100, (globalTime / totalDuration) * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Draggable Playhead Slider */}
@@ -831,6 +843,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {/* Left Controls (Play, Prev, Next, Time) */}
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => handleJumpScene('prev')}
               className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Previous Scene"
@@ -839,6 +852,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => handleSeek(globalTime - 10)}
               className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Rewind 10s"
@@ -847,6 +861,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={handleTogglePlay}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 hover:from-rose-500 hover:to-pink-600 text-white shadow-md shadow-pink-500/30 transition-transform active:scale-95"
               title={isPlaying ? 'Pause' : 'Play'}
@@ -855,6 +870,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => handleSeek(globalTime + 10)}
               className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Fast Forward 10s"
@@ -863,6 +879,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => handleJumpScene('next')}
               className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Next Scene"
@@ -879,12 +896,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           {/* Right Controls (Shaders/Format, Speed, Aspect, Captions, Volume, Fullscreen, Export) */}
           <div className="flex items-center gap-2">
-            {/* 3D Render Shading Mode Selector (when in 3D mode) */}
-            {sourceMode === '3d' && (
+            {/* 3D Render Shading Mode Selector (when in 3D WebGL mode) */}
+            {viewMode === 'webgl' && (
               <div className="flex items-center rounded-xl bg-slate-800 border border-pink-500/20 p-0.5">
                 {(['cinematic_pbr', 'wireframe', 'clay_model'] as Render3DMode[]).map((mode) => (
                   <button
                     key={mode}
+                    type="button"
                     onClick={() => {
                       setRender3DMode(mode);
                       onUpdateProject?.({ render3DMode: mode });
@@ -919,6 +937,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {(['16:9', '9:16', '1:1'] as AspectRatio[]).map((ar) => (
                 <button
                   key={ar}
+                  type="button"
                   onClick={() => {
                     setAspectRatio(ar);
                     onUpdateProject?.({ aspectRatio: ar });
@@ -975,6 +994,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Volume Control */}
             <div className="flex items-center gap-1.5 bg-slate-800 border border-pink-500/20 rounded-xl px-2 py-1">
               <button
+                type="button"
                 onClick={handleToggleMute}
                 className="text-slate-400 hover:text-white transition-colors"
                 title={isMuted ? 'Unmute' : 'Mute'}
@@ -995,6 +1015,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             {/* Fullscreen */}
             <button
+              type="button"
               onClick={handleToggleFullscreen}
               className="rounded-xl p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="Toggle Fullscreen"
@@ -1004,6 +1025,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             {/* Export / Download Master Video Button */}
             <button
+              type="button"
               onClick={handleExportOrDownload}
               disabled={isRecording}
               className="btn-cine-primary flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold shadow-md shadow-pink-500/30 hover:scale-[1.02] transition-transform"

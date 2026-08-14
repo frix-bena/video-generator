@@ -24,6 +24,10 @@ export class Three3DRenderEngine {
   private mousePrevY: number = 0;
   private orbitSpherical: THREE.Spherical = new THREE.Spherical(12, Math.PI / 3, Math.PI / 4);
   private orbitTarget: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  private onMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+  private onMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private onMouseUpHandler: (() => void) | null = null;
+  private onWheelHandler: ((e: WheelEvent) => void) | null = null;
 
   // Lighting references
   private ambientLight: THREE.AmbientLight;
@@ -1184,14 +1188,14 @@ export class Three3DRenderEngine {
   private setupInteractivity() {
     const canvas = this.containerCanvas;
 
-    const onMouseDown = (e: MouseEvent) => {
+    this.onMouseDownHandler = (e: MouseEvent) => {
       if (!this.isInteractiveMode) return;
       this.isMouseDown = true;
       this.mousePrevX = e.clientX;
       this.mousePrevY = e.clientY;
     };
 
-    const onMouseMove = (e: MouseEvent) => {
+    this.onMouseMoveHandler = (e: MouseEvent) => {
       if (!this.isInteractiveMode || !this.isMouseDown) return;
       const deltaX = e.clientX - this.mousePrevX;
       const deltaY = e.clientY - this.mousePrevY;
@@ -1202,20 +1206,20 @@ export class Three3DRenderEngine {
       this.orbitSpherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.orbitSpherical.phi - deltaY * 0.006));
     };
 
-    const onMouseUp = () => {
+    this.onMouseUpHandler = () => {
       this.isMouseDown = false;
     };
 
-    const onWheel = (e: WheelEvent) => {
+    this.onWheelHandler = (e: WheelEvent) => {
       if (!this.isInteractiveMode) return;
       e.preventDefault();
       this.orbitSpherical.radius = Math.max(2, Math.min(40, this.orbitSpherical.radius + e.deltaY * 0.015));
     };
 
-    canvas.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('mousedown', this.onMouseDownHandler);
+    window.addEventListener('mousemove', this.onMouseMoveHandler);
+    window.addEventListener('mouseup', this.onMouseUpHandler);
+    canvas.addEventListener('wheel', this.onWheelHandler, { passive: false });
   }
 
   private updateInteractiveCamera() {
@@ -1425,5 +1429,43 @@ export class Three3DRenderEngine {
         }
       }
     });
+  }
+
+  public dispose() {
+    try {
+      if (this.onMouseDownHandler) {
+        this.containerCanvas.removeEventListener('mousedown', this.onMouseDownHandler);
+      }
+      if (this.onMouseMoveHandler) {
+        window.removeEventListener('mousemove', this.onMouseMoveHandler);
+      }
+      if (this.onMouseUpHandler) {
+        window.removeEventListener('mouseup', this.onMouseUpHandler);
+      }
+      if (this.onWheelHandler) {
+        this.containerCanvas.removeEventListener('wheel', this.onWheelHandler);
+      }
+
+      if (this.currentSceneGroup) {
+        this.disposeHierarchy(this.currentSceneGroup);
+        this.scene.remove(this.currentSceneGroup);
+        this.currentSceneGroup = null;
+      }
+
+      if (this.particleSystem) {
+        this.particleSystem.geometry.dispose();
+        if (Array.isArray(this.particleSystem.material)) {
+          this.particleSystem.material.forEach((m) => m.dispose());
+        } else {
+          (this.particleSystem.material as THREE.Material).dispose();
+        }
+        this.scene.remove(this.particleSystem);
+        this.particleSystem = null;
+      }
+
+      this.renderer.dispose();
+    } catch (err) {
+      console.warn('[Three3DRenderEngine] Error during dispose:', err);
+    }
   }
 }

@@ -302,6 +302,7 @@ export const PublishStage: React.FC<PublishStageProps> = ({
 
             <VideoPlayer
               project={project}
+              videoUrl={project.videoUrl || selectedVariation?.videoUrl}
               currentSegmentIndex={0}
               onUpdateProject={onUpdateProject}
             />

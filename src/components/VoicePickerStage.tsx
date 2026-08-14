@@ -208,6 +208,7 @@ export const VoicePickerStage: React.FC<VoicePickerStageProps> = ({
 
           <VideoPlayer
             project={project}
+            videoUrl={project.videoUrl}
             currentSegmentIndex={0}
             onUpdateProject={onUpdateProject}
             autoPlay={false}

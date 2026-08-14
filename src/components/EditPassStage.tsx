@@ -231,6 +231,7 @@ export const EditPassStage: React.FC<EditPassStageProps> = ({
         <div className="lg:col-span-7 space-y-4">
           <VideoPlayer
             project={project}
+            videoUrl={project.videoUrl}
             currentSegmentIndex={selectedSceneIndex}
             onSegmentChange={handleSelectScene}
             onUpdateProject={onUpdateProject}

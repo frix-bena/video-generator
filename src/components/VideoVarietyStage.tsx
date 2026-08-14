@@ -128,6 +128,7 @@ export const VideoVarietyStage: React.FC<VideoVarietyStageProps> = ({
           {/* Embedded 3D Player */}
           <VideoPlayer
             project={activeProject}
+            videoUrl={activeProject.videoUrl || activeVariation?.videoUrl}
             currentSegmentIndex={0}
             onUpdateProject={onUpdateProject}
             autoPlay={true}

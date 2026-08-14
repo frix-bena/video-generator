@@ -38,6 +38,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
   const [elapsedSec, setElapsedSec] = useState<number>(0);
   const [estimatedRemainingSec, setEstimatedRemainingSec] = useState<number>(35);
   const [isCompleted, setIsCompleted] = useState<boolean>(Boolean(project.videoUrl));
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string | undefined>(project.videoUrl);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([
     'Initializing Cinegen Autonomous Video Generation Pipeline...',
@@ -80,6 +81,7 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
 
         if (result.status === 'completed' && result.videoUrl) {
           setIsCompleted(true);
+          setCurrentVideoUrl(result.videoUrl);
           setProgressPct(100);
           setStatusMessage('Photorealistic video rendered successfully!');
           audioEngine.playSFX('chime');
@@ -219,12 +221,13 @@ export const GenerationStage: React.FC<GenerationStageProps> = ({
             </h3>
             <span className="text-[11px] font-mono text-pink-400 flex items-center gap-1 font-semibold">
               <span className="h-2 w-2 rounded-full bg-pink-400 animate-ping" />
-              {project.videoUrl ? 'HTML5 MP4 Stream' : 'Live WebGL Pipeline'}
+              {(currentVideoUrl || project.videoUrl) ? 'HTML5 MP4 Stream' : 'Live WebGL Pipeline'}
             </span>
           </div>
 
           <VideoPlayer
-            project={project}
+            project={{ ...project, videoUrl: currentVideoUrl || project.videoUrl }}
+            videoUrl={currentVideoUrl || project.videoUrl}
             currentSegmentIndex={activeSceneIdx}
             onSegmentChange={setActiveSceneIdx}
             onUpdateProject={onUpdateProject}

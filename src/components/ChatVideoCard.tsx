@@ -198,6 +198,7 @@ export const ChatVideoCard: React.FC<ChatVideoCardProps> = ({
       <div className="p-3 sm:p-4 bg-slate-950/60">
         <VideoPlayer
           project={project}
+          videoUrl={project.videoUrl}
           currentSegmentIndex={0}
           onUpdateProject={onUpdateProject}
           autoPlay={false}
