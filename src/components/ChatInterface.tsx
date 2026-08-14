@@ -14,11 +14,7 @@ import {
   Video, 
   Wand2, 
   SlidersHorizontal,
-  X,
-  Play,
-  Camera,
-  Layers,
-  ArrowRight
+  X
 } from 'lucide-react';
 import { Project, AspectRatio, CameraTrajectory } from '../types/cinegen';
 import { VOICES_LIBRARY } from '../data/voices';
@@ -37,39 +33,12 @@ export interface ChatMessageItem {
   actions?: string[];
 }
 
-const STARTER_PROMPTS = [
-  {
-    icon: '🐆',
-    title: 'Himalayan Snow Leopard',
-    prompt: 'A snow leopard leaping across snowy Himalayan cliffs at golden hour in 4K with dramatic 35mm anamorphic camera and cinematic orchestral score',
-    tag: '4K • 35mm Prime',
-  },
-  {
-    icon: '🏙️',
-    title: 'Cyberpunk Neo-Tokyo',
-    prompt: 'Futuristic Neo-Tokyo street in pouring rain with volumetric neon lighting, 360° orbit camera, and reflections on wet asphalt',
-    tag: 'Neon • 360° Orbit',
-  },
-  {
-    icon: '🌊',
-    title: 'Deep Ocean Trench',
-    prompt: 'Bioluminescent deep sea creatures gliding through an underwater abyss with macro push-in camera and atmospheric blue lighting',
-    tag: 'Macro Push • Volumetric',
-  },
-  {
-    icon: '🏜️',
-    title: 'FPV Desert Canyon Drone',
-    prompt: 'High-speed FPV aerial drone flythrough through ancient sandstone canyon arches at sunset with cinematic 60 FPS motion',
-    tag: 'FPV Drone • 60 FPS',
-  },
-];
-
 export const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([
     {
       id: 'welcome-msg',
       sender: 'agent',
-      text: "👋 **Welcome! What video would you like to create today?**\n\nDescribe your concept below or pick one of the quick suggestions to generate a cinematic video with realistic 3D camera trajectories and synchronized voice narration.",
+      text: "👋 **Welcome! What video would you like to create today?**\n\nDescribe your concept below to generate a cinematic video with realistic 3D camera motion, PBR lighting, and synchronized voice narration.",
       timestamp: 'Just now',
     },
   ]);
@@ -508,75 +477,7 @@ export const ChatInterface: React.FC = () => {
       {/* Main Centered Chat Stream */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 custom-scrollbar">
         <div className="mx-auto w-full max-w-3xl lg:max-w-4xl space-y-6 pb-52">
-          
-          {/* Welcome Screen Cards (Visible when starting or only welcome message exists) */}
-          {messages.length === 1 && (
-            <div className="my-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs font-semibold mb-3">
-                  <Sparkles className="h-3.5 w-3.5 text-pink-400" />
-                  Quick Inspiration Prompts
-                </div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                  What cinematic video would you like to create?
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
-                  Click any concept below to start immediately, or type your custom idea.
-                </p>
-              </div>
 
-              {/* Starter Suggestion Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {STARTER_PROMPTS.map((item, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setInputText(item.prompt);
-                      if (textareaRef.current) {
-                        textareaRef.current.focus();
-                      }
-                      audioEngine.playSFX('click');
-                    }}
-                    className="group relative rounded-2xl bg-slate-900/70 hover:bg-slate-900 border border-pink-500/20 hover:border-pink-500/50 p-4 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-pink-500/10 hover:-translate-y-0.5 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{item.icon}</span>
-                          <h3 className="font-bold text-white text-sm group-hover:text-pink-300 transition-colors">
-                            {item.title}
-                          </h3>
-                        </div>
-                        <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20">
-                          {item.tag}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                        "{item.prompt}"
-                      </p>
-                    </div>
-
-                    <div className="mt-3 pt-2.5 border-t border-pink-500/10 flex items-center justify-between text-xs">
-                      <span className="text-[11px] text-slate-400 group-hover:text-slate-300 transition-colors">
-                        Click to use prompt
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSendMessage(item.prompt);
-                        }}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-400 hover:text-pink-300 group-hover:translate-x-0.5 transition-all"
-                      >
-                        <span>Generate</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Messages Feed */}
           {messages.map((message) => (
@@ -779,7 +680,7 @@ export const ChatInterface: React.FC = () => {
                 value={inputText}
                 onChange={handleTextareaChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe the video you want to create (e.g. 'A snow leopard leaping across Himalayan cliffs at sunrise in 4K with 35mm prime lens')..."
+                placeholder="Describe the video you want to create..."
                 disabled={isGenerating}
                 rows={1}
                 className="flex-1 max-h-44 min-h-[52px] bg-transparent px-3 py-2.5 text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none resize-none custom-scrollbar leading-relaxed"
