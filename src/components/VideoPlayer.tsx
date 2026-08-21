@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import Hls from 'hls.js';
 import { 
   Play, 
   Pause, 
@@ -33,6 +34,15 @@ export interface VideoPlayerProps {
   autoPlay?: boolean;
   className?: string;
 }
+
+/**
+ * Checks if a string URL points to an HLS streaming playlist (.m3u8)
+ */
+export const isHlsStream = (url?: string | null): boolean => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.m3u8') || url.includes('.m3u8');
+};
 
 /**
  * Checks if a string URL points to a static image format
@@ -88,6 +98,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   className = '',
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
 
@@ -172,26 +183,123 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
-  // Autoplay handler when valid videoUrl is mounted or changes
+  // Robust Stream Attacher: Supports HLS (.m3u8 via Hls.js with Apple fallback) and standard web MP4/WebM
   useEffect(() => {
-    if (activeVideoUrl && hasValidVideoUrl && videoRef.current) {
-      setPlaybackError(null);
+    const videoElement = videoRef.current;
+    if (!videoElement || !activeVideoUrl || !hasValidVideoUrl) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      return;
+    }
+
+    // Clean up any prior Hls instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    setPlaybackError(null);
+    const isHls = isHlsStream(activeVideoUrl);
+
+    if (isHls) {
+      if (Hls.isSupported()) {
+        console.log('[VideoPlayer] Initializing Hls.js stream player for:', activeVideoUrl);
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 600,
+        });
+        hlsRef.current = hls;
+
+        hls.attachMedia(videoElement);
+
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          hls.loadSource(activeVideoUrl);
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('[VideoPlayer] HLS manifest parsed successfully.');
+          setPlaybackError(null);
+          setIsVideoBuffering(false);
+          if (autoPlay) {
+            setShowCoverOverlay(false);
+            videoElement.play().then(() => setIsPlaying(true)).catch(() => {
+              videoElement.muted = true;
+              setIsMuted(true);
+              videoElement.play().then(() => setIsPlaying(true)).catch(() => {});
+            });
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          console.warn('[VideoPlayer] Hls.js event:', data.type, data.details, 'Fatal:', data.fatal);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn('[VideoPlayer] HLS network error, attempting reload...');
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('[VideoPlayer] HLS media decode error, attempting recovery...');
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('[VideoPlayer] Fatal HLS stream error:', data.details);
+                hls.destroy();
+                hlsRef.current = null;
+                setPlaybackError(`Unable to decode HLS video format (${data.details || 'stream error'}).`);
+                setIsVideoBuffering(false);
+                break;
+            }
+          }
+        });
+      } else if (
+        videoElement.canPlayType('application/vnd.apple.mpegurl') ||
+        videoElement.canPlayType('application/x-mpegURL')
+      ) {
+        console.log('[VideoPlayer] Using native Safari HLS decoder for:', activeVideoUrl);
+        videoElement.src = activeVideoUrl;
+        if (autoPlay) {
+          setShowCoverOverlay(false);
+          videoElement.play().then(() => setIsPlaying(true)).catch(() => {
+            videoElement.muted = true;
+            setIsMuted(true);
+            videoElement.play().then(() => setIsPlaying(true)).catch(() => {});
+          });
+        }
+      } else {
+        setPlaybackError('HLS (.m3u8) video streaming is not supported by your browser.');
+      }
+    } else {
+      // Standard MP4 / WebM / Blob playback
+      videoElement.src = activeVideoUrl;
+      videoElement.load();
       if (autoPlay) {
         setShowCoverOverlay(false);
-        videoRef.current.play().then(() => {
+        videoElement.play().then(() => {
           setIsPlaying(true);
         }).catch((_err) => {
-          // If browser blocks unmuted autoplay, mute and retry
-          if (videoRef.current) {
-            videoRef.current.muted = true;
+          if (videoElement) {
+            videoElement.muted = true;
             setIsMuted(true);
-            videoRef.current.play().then(() => {
+            videoElement.play().then(() => {
               setIsPlaying(true);
             }).catch(() => {});
           }
         });
       }
     }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
   }, [activeVideoUrl, hasValidVideoUrl, autoPlay]);
 
   // Sync volume with video ref
@@ -288,6 +396,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const error = e.currentTarget.error;
     console.error("Video Error Code:", error?.code, "Message:", error?.message);
 
+    // If Hls.js is active and handling recovery, avoid premature error banner
+    if (isHlsStream(activeVideoUrl) && Hls.isSupported() && hlsRef.current) {
+      return;
+    }
+
     let detailedMessage = 'Unable to decode video format.';
     if (error) {
       switch (error.code) {
@@ -298,7 +411,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           detailedMessage = 'A network error occurred while downloading the video stream.';
           break;
         case 3: // MEDIA_ERR_DECODE
-          detailedMessage = 'Unable to decode video format. The stream is corrupted or format is unsupported.';
+          detailedMessage = 'Unable to decode video format. The stream is corrupted, missing moov atom faststart, or uses an unsupported codec.';
           break;
         case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
           detailedMessage = 'Video stream format or MIME type is not supported by your browser.';
@@ -316,6 +429,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsReloadingVideo(true);
     setPlaybackError(null);
     audioEngine.playSFX('whoosh');
+
+    // Destroy existing Hls instance if any
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
 
     try {
       const result = await VideoApiService.reloadVideoUrl({
@@ -579,23 +698,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onEnded={() => setIsPlaying(false)}
             onError={handleVideoError}
             onClick={handleTogglePlay}
-          >
-            {activeVideoUrl && (
-              <source 
-                src={activeVideoUrl} 
-                type={activeVideoUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'}
-                onError={(e) => {
-                  console.error('[VideoPlayer Source Error]:', e);
-                  if (videoRef.current?.error) {
-                    console.error("Video Error Code:", videoRef.current.error.code, "Message:", videoRef.current.error.message);
-                  }
-                  setPlaybackError('Unable to decode video format. Stream format or codec is unsupported.');
-                  setIsVideoBuffering(false);
-                }}
-              />
-            )}
-            Your browser does not support the video tag.
-          </video>
+          />
         )}
 
         {/* Dedicated Styled Video Cover Page Overlay */}

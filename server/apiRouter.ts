@@ -1,5 +1,9 @@
 import express, { type Request, type Response, type Router } from 'express';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import fs from 'node:fs';
+import { VideoStreamService } from './videoStreamService.ts';
+import { VideoTranscoder } from './videoTranscoder.ts';
 
 dotenv.config();
 
@@ -1066,6 +1070,116 @@ export const createApiRouter = (): Router => {
     }
 
     res.status(200).json({ received: true });
+  });
+
+  // =========================================================================
+  // VIDEO STREAMING & TRANSCODING ENDPOINTS (HTTP 206 Partial Content / HLS)
+  // =========================================================================
+
+  // GET /api/stream/:filename - Streams local/generated video files with HTTP 206 Partial Content
+  router.get('/stream/:filename', (req: Request, res: Response) => {
+    const filenameParam = req.params.filename;
+    const filename = Array.isArray(filenameParam) ? filenameParam[0] : String(filenameParam);
+    // Sanitize filename to prevent directory traversal
+    const safeFilename = path.basename(filename);
+
+    const searchDirs = [
+      path.join(process.cwd(), 'public', 'videos'),
+      path.join(process.cwd(), 'public'),
+      path.join(process.cwd(), 'uploads'),
+      path.join(process.cwd(), 'dist'),
+    ];
+
+    let foundPath: string | null = null;
+    for (const dir of searchDirs) {
+      const candidate = path.join(dir, safeFilename);
+      if (fs.existsSync(candidate)) {
+        foundPath = candidate;
+        break;
+      }
+    }
+
+    if (!foundPath) {
+      return res.status(404).json({
+        success: false,
+        error: `Video stream file "${safeFilename}" not found on server.`,
+      });
+    }
+
+    VideoStreamService.serveLocalVideoFile(foundPath, req, res);
+  });
+
+  // GET /api/stream-proxy - Proxies remote MP4 / HLS streams with range forwarding
+  router.get('/stream-proxy', async (req: Request, res: Response) => {
+    const rawUrl = req.query.url;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required "url" query parameter for video stream proxy.',
+      });
+    }
+
+    await VideoStreamService.proxyRemoteVideoStream(rawUrl, req, res);
+  });
+
+  // GET /api/transcode/info - Returns FFmpeg status and web-safe encoding configuration
+  router.get('/transcode/info', async (_req: Request, res: Response) => {
+    const isFfmpegAvailable = await VideoTranscoder.isFfmpegAvailable();
+    res.json({
+      success: true,
+      isFfmpegAvailable,
+      webSafeCodecs: {
+        videoCodec: 'libx264',
+        audioCodec: 'aac',
+        pixelFormat: 'yuv420p',
+        profile: 'main',
+        level: '3.1',
+        faststart: '+faststart',
+        description: 'Universal HTML5 web-compatible H.264/AAC with moov atom faststart',
+      },
+      headers: {
+        contentType: 'video/mp4',
+        acceptRanges: 'bytes',
+        statusCode: 'HTTP 206 Partial Content (on Range requests) / HTTP 200 OK',
+      },
+    });
+  });
+
+  // POST /api/transcode - Transcodes video to web-safe MP4 format
+  router.post('/transcode', async (req: Request, res: Response) => {
+    try {
+      const { inputPath, outputPath, resolution, fps } = req.body || {};
+      if (!inputPath || !outputPath) {
+        return res.status(400).json({
+          success: false,
+          error: 'inputPath and outputPath strings are required.',
+        });
+      }
+
+      const result = await VideoTranscoder.transcodeToWebSafeMp4({
+        inputPath,
+        outputPath,
+        resolution,
+        fps,
+        faststart: true,
+      });
+
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.error || 'Transcoding failed.',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Video transcoded successfully to web-safe MP4 (+faststart).',
+        outputPath: result.outputPath,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Transcoding failed';
+      res.status(500).json({ success: false, error: msg });
+    }
   });
 
   return router;
